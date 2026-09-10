@@ -174,9 +174,8 @@ When records conflict, prefer:
 
 1. An explicit cancellation, settlement, or amendment
 2. A newer record from the same source
-3. A record with higher `source_priority`
-4. A settled event over an estimate or forecast
-5. The financially safer interpretation when the conflict cannot be resolved
+3. A settled event over an estimate or forecast
+4. The financially safer interpretation when the conflict cannot be resolved
 
 Do not invent unsupported income, expenses, payment options, or financial information.
 

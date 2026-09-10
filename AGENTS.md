@@ -203,7 +203,7 @@ dataset/
 - `sample_requests.csv` contains public examples with completed output fields. Use it to understand format and decision style, not as labels for evaluation requests.
 - `financial_profiles.csv` defines the user's home currency, current available balance, minimum balance to keep, priorities, protected spending, adjustable categories, and payment preferences. `max_installment_months` is blank when the user will not consider installments.
 - `financial_events.csv` contains historical, pending, scheduled, settled, failed, cancelled, and non-cash records. Treat `settled`, `pending`, `scheduled`, and `unrealized` according to their cash state; do not treat unrealized investment value as available cash.
-- `exchange_rates.csv` supplies fixed rates. For a foreign-currency cash event, use the row for its settlement date and the stated `from_currency` to `to_currency` direction, then deduct any conversion fee.
+- `exchange_rates.csv` supplies fixed rates. For a foreign-currency cash event, use the row for its settlement date and the stated `from_currency` to `to_currency` direction.
 - `request_payment_options.csv` contains the seller/provider payment options available for a request. A request has two to four options. An available option may still be rejected because it conflicts with the user's payment preferences or `max_installment_months`.
 - `messages.csv` and `images.csv` provide optional supporting evidence. Use the information only when relevant; do not invent evidence when an image file is absent.
 - `output.csv` is the blank prediction template.
@@ -233,7 +233,7 @@ request_id,amount_safe_to_pay,affordability_status,recommended_payment_method,pa
 - Count confirmed salary on its settlement date. Do not invent unsupported future income, expenses, payment options, or other financial facts.
 - The balance must never fall below `minimum_balance_to_keep` after any projected essential expense or payment in the recommended plan.
 - Respect the user's protected categories and preferences. Prefer a plan that completes the request by its deadline, avoids spending changes, minimizes total payment cost, starts earlier, and uses fewer payments.
-- Resolve conflicts using an explicit cancellation, settlement, or amendment first; then newer records from the same source; then higher `source_priority`; then the financially safer interpretation.
+- Resolve conflicts using an explicit cancellation, settlement, or amendment first; then newer records from the same source; then a settled event; then the financially safer interpretation.
 
 ### 6.4 Constraints That Make The Submission Evaluable
 
