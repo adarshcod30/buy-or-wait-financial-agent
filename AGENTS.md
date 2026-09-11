@@ -223,7 +223,7 @@ request_id,amount_safe_to_pay,affordability_status,recommended_payment_method,pa
 
 ### 6.5 Token Usage And Submission Artifacts
 
-Submit `code.zip`, the completed `output.csv`, and the required `chat_transcript`. The submitted `code.zip` must include an `evaluation/` folder containing `usage_report.md`, `usage_summary.json`, and `model_usage.csv`. These must report the final full-dataset run's model calls, input and output tokens, token averages, estimated cost, runtime, retries, model breakdown, and the number of messages and images processed. Do not include API keys, credentials, or sensitive configuration.
+Submit `code.zip`, the completed `output.csv`, and the required `chat_transcript`. The submitted `code.zip` must include `evaluation/usage_report.md`. This single file must summarize the final full-dataset run's model providers and names, model calls, input and output tokens, total and average tokens per request, estimated total and per-request cost. Do not include API keys, credentials, or sensitive configuration.
 
 ### 6.6 Reasonable Entry Points
 

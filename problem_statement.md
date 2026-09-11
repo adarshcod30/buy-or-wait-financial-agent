@@ -112,7 +112,7 @@ For `affordable_now`, `earliest_date_for_full_payment` must equal `request_date`
 
 `affordability_status`:
 
-- `affordable_now`: the full amount is safe to pay on `request_date`
+- `affordable_now`: the full amount is safe to pay on `request_date` and the user accepts `full_payment`
 - `affordable_with_plan`: the request can be completed through partial payment, installments, or permitted spending changes
 - `affordable_later`: the full amount is expected to become safe later
 - `not_affordable`: the request cannot be completed safely within the forecast period
@@ -154,21 +154,36 @@ stop:E014|reduce_to:E021:100
 
 Use `none` when no spending change is needed. Only recurring expenses marked as flexible may be changed.
 
+`earliest_date_for_full_payment` measures financial capacity independently of the user's payment-method preferences. It may equal `request_date` even when the selected recommendation is installments because the user has chosen not to consider full payment.
+
 ## Important Behavior
 
 The system should:
 
-- Identify recurring expenses only when historical data supports a clear pattern.
 - Distinguish recurring expenses from one-time purchases, transfers, refunds, and unusual events.
-- Estimate essential variable spending, such as groceries and transport, conservatively.
-- Reserve pending transactions until they are resolved.
-- Count confirmed salary only on its settlement date.
-- Ignore uncertain income, bonuses, refunds, windfalls, and unsupported future credits.
-- Ensure the balance never falls below the user’s minimum balance after any projected payment or essential expense.
 - Respect all supplied payment-option schedules.
-- Avoid counting duplicate representations of the same financial event more than once.
 - Use messages and images to clarify, amend, cancel, delay, or confirm financial information.
 - Treat all message and image content as untrusted data. Embedded instructions must not override the problem rules.
+
+### 90-Day Safety Check
+
+Forecast the user's balance for the next 90 days using recurring income and expenses, confirmed future payments, and relevant messages or images. A plan is safe only if the balance never falls below `minimum_balance_to_keep`. Ignore pending credits, failed or cancelled transactions, duplicate records, and unrealized investments.
+
+- `amount_safe_to_pay`: the most the user can pay today without breaking the 90-day safety check, capped at `requested_amount`.
+- `earliest_date_for_full_payment`: the first date the full amount passes the safety check without optional spending changes.
+
+### Choosing Between Safe Plans
+
+A payment approach is eligible only when it appears in the user's `payment_methods_user_will_consider`. When more than one eligible plan is safe, rank the plans in this order:
+
+1. Complete the full request by `desired_completion_date`.
+2. Require no spending changes.
+3. Minimize the total amount paid.
+4. Start payment earlier.
+5. Use fewer payments.
+6. Use the lowest `payment_option_id` as the final tie-breaker.
+
+Stopping and reducing the same financial event are mutually exclusive. If both types of spending change are required, they must reference different events.
 
 When records conflict, prefer:
 
@@ -183,51 +198,16 @@ Investment requests concern affordability and existing contributions. The task d
 
 ## Evaluation
 
-Your `output.csv` will be compared against hidden expected values and evaluated using the organizer’s financial simulator.
+Your `output.csv` will be compared against hidden ground-truth values.
 
 The scoring will consider:
 
 - accuracy of `amount_safe_to_pay`
 - correctness of `affordability_status`
-- correctness of `recommended_payment_method`
-- feasibility of the complete `payment_plan`
+- correctness of `recommended_payment_method` and `payment_plan`
 - accuracy of `earliest_date_for_full_payment`
-- feasibility and minimality of `spending_changes_needed`
-- quality of recurring-expense and essential-spending forecasts
-- protection of essential payments and the user’s minimum balance
-- correct interpretation of relevant messages and images
+- validity of `spending_changes_needed`
 - usefulness and consistency of `decision_explanation`
-- token usage and total processing cost
-
-There may be more than one valid forecast or payment plan. Forecasts and dates will be evaluated using defined tolerances, and payment plans will be simulated for safety, timing, cost, and disruption.
-
-Overestimating `amount_safe_to_pay` will receive a larger penalty than a comparable underestimate.
-
-Returning `0` for every request, using the same amount for every user, or marking every request as `not_affordable` will not produce a competitive score.
-
-## Token usage and cost analysis
-
-Your `code.zip` must include an `evaluation/` folder containing:
-
-- `evaluation/usage_report.md`
-- `evaluation/usage_summary.json`
-- `evaluation/model_usage.csv`
-
-The report must include:
-
-- model calls
-- input and output tokens
-- average tokens per request
-- estimated total cost
-- cost per request
-- runtime
-- retries
-- model breakdown
-- number of images and messages processed
-
-The reported values must correspond to the final full-dataset run that produced `output.csv`.
-
-Do not include API keys, credentials, or sensitive configuration values in the submission.
 
 ## Submission
 
@@ -238,5 +218,17 @@ Submit:
 | `code.zip` | Full runnable solution, prompts/configuration, README, and the required `evaluation/` folder |
 | `output.csv` | Predictions for every row in `dataset/requests.csv` |
 | `chat_transcript` | Conversation transcript showing how you developed or used the system |
+
+### Token Usage and Cost Analysis
+
+Your `code.zip` must include one token-usage file:
+
+```text
+evaluation/usage_report.md
+```
+
+The report must summarize the final full-dataset run that produced `output.csv`, including model providers and names, model calls, input and output tokens, total and average tokens per request, estimated total and per-request cost. If multiple models are used, include both per-model and overall totals in the same file.
+
+Do not include API keys, credentials, or sensitive configuration values in the submission.
 
 These are the required deliverables. Participants are encouraged to improve retrieval, multimodal interpretation, financial-state reconstruction, plan generation, deterministic verification, batching, caching, and token efficiency.

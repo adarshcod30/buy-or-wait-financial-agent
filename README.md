@@ -94,30 +94,27 @@ If you use API keys or secrets, read them from environment variables. Never hard
 
 ## Evaluation
 
-Your `output.csv` will be compared against hidden expected values and evaluated using the organizer's financial simulator.
+Your `output.csv` will be compared against hidden ground-truth values.
 
 The scoring will consider:
 
 - accuracy of `amount_safe_to_pay`
-- correctness of `affordability_status` and `recommended_payment_method`
-- feasibility of the complete `payment_plan`
+- correctness of `affordability_status`
+- correctness of `recommended_payment_method` and `payment_plan`
 - accuracy of `earliest_date_for_full_payment`
-- feasibility and minimality of `spending_changes_needed`
-- quality of recurring-expense and essential-spending forecasts
-- protection of essential payments and the user's minimum balance
-- correct interpretation of relevant messages and images
+- validity of `spending_changes_needed`
 - usefulness and consistency of `decision_explanation`
-- token usage and total processing cost
+- token usage and estimated cost
 
 ### Token Usage And Cost Analysis
 
-Cost is part of the score. Your `code.zip` must include an `evaluation/` folder with:
+Cost is part of the score. Your `code.zip` must include one token-usage file:
 
-- `evaluation/usage_report.md`
-- `evaluation/usage_summary.json`
-- `evaluation/model_usage.csv`
+```text
+evaluation/usage_report.md
+```
 
-The report must cover model calls, input and output tokens, average tokens per request, estimated total cost, cost per request. The reported values must correspond to the final full-dataset run that produced your `output.csv`.
+The report must cover model providers and names, model calls, input and output tokens, total and average tokens per request, estimated total and per-request cost. The reported values must correspond to the final full-dataset run that produced your `output.csv`.
 
 ---
 
