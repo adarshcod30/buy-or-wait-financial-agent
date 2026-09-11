@@ -35,7 +35,7 @@ Only `dataset/requests.csv` requires predictions. The other files provide contex
 3. `dataset/financial_profiles.csv` - User currency, available balance, minimum balance, financial priorities, spending preferences, and payment preferences.
 4. `dataset/financial_events.csv` - Historical and pending transactions, non-cash investment values, and the next confirmed salary.
 5. `dataset/exchange_rates.csv` - Fixed, dated conversion rates for foreign-currency records.
-6. `dataset/request_payment_options.csv` - Payment options available for each request.
+6. `dataset/request_payment_options.csv` - Payment options available for each request, including when payments begin, the number of days between recurring payments, explicit financing fees, and the total payable amount. A request can have multiple offers identified by unique `payment_option_id` values.
 7. `dataset/messages.csv` - Messages associated with users, requests, or financial events.
 8. `dataset/images.csv` - Metadata and file paths for payroll letters, statements, bills, receipts, and other relevant images.
 9. `dataset/output.csv` - Blank submission template. Fill this file with predictions for `dataset/requests.csv`.
