@@ -37,10 +37,10 @@ Only `dataset/requests.csv` requires predictions. The other files provide contex
 5. `dataset/exchange_rates.csv` - Fixed, dated conversion rates for foreign-currency records.
 6. `dataset/request_payment_options.csv` - Payment options available for each request, including when payments begin, the number of days between recurring payments, explicit financing fees, and the total payable amount. A request can have multiple offers identified by unique `payment_option_id` values.
 7. `dataset/messages.csv` - Messages associated with users, requests, or financial events.
-8. `dataset/images.csv` - Metadata and file paths for payroll letters, statements, bills, receipts, and other relevant images.
+8. `dataset/images.csv` - Links relevant images to users, requests, or financial events using `image_id`.
 9. `dataset/output.csv` - Blank submission template. Fill this file with predictions for `dataset/requests.csv`.
 
-All files are linked using `user_id` and `request_id`. Image files referenced by `images.csv` are available under `dataset/media/images/`.
+All files are linked using `user_id` and `request_id`. Every image is a PNG stored as `dataset/media/images/<image_id>.png`; for example, `image_07` corresponds to `dataset/media/images/image_07.png`.
 
 Balances, requests, payment options, and output amounts use the user’s `home_currency`. The dataset includes INR, ZAR, IDR, USD, and EUR. Required dated conversion rates are provided in `exchange_rates.csv`.
 

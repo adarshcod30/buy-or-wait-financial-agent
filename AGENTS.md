@@ -205,7 +205,7 @@ dataset/
 - `financial_events.csv` contains historical, pending, scheduled, settled, failed, cancelled, and non-cash records. Treat `settled`, `pending`, `scheduled`, and `unrealized` according to their cash state; do not treat unrealized investment value as available cash.
 - `exchange_rates.csv` supplies fixed rates. For a foreign-currency cash event, use the row for its settlement date and the stated `from_currency` to `to_currency` direction.
 - `request_payment_options.csv` contains the seller/provider payment options available for a request. A request has two to four options. An available option may still be rejected because it conflicts with the user's payment preferences or `max_installment_months`.
-- `messages.csv` and `images.csv` provide optional supporting evidence. Use the information only when relevant; do not invent evidence when an image file is absent.
+- `messages.csv` and `images.csv` provide optional supporting evidence. Resolve each image as `dataset/media/images/<image_id>.png`; for example, `image_07` maps to `dataset/media/images/image_07.png`. Use the information only when relevant; do not invent evidence when an image file is absent.
 - `output.csv` is the blank prediction template.
 
 Organizer-only files live outside `dataset/` and must never be used for predictions.
