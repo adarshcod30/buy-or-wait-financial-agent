@@ -33,10 +33,10 @@ Only `dataset/requests.csv` requires predictions. The other files provide contex
 1. `dataset/requests.csv` - Current financial questions from users.
 2. `dataset/sample_requests.csv` - Example requests with completed output columns. Use these to understand the expected format and decision style.
 3. `dataset/financial_profiles.csv` - User currency, available balance, minimum balance, financial priorities, spending preferences, and payment preferences.
-4. `dataset/financial_events.csv` - Historical and pending transactions, non-cash investment values, and the next confirmed salary.
+4. `dataset/financial_events.csv` - Historical and pending transactions, non-cash investment values, and the next confirmed salary. When `linked_event_id` is present, it points to an earlier event in the same transaction or investment lifecycle.
 5. `dataset/exchange_rates.csv` - Fixed, dated conversion rates for foreign-currency records.
 6. `dataset/request_payment_options.csv` - Payment options available for each request, including when payments begin, the number of days between recurring payments, explicit financing fees, and the total payable amount. A request can have multiple offers identified by unique `payment_option_id` values.
-7. `dataset/messages.csv` - Messages associated with users, requests, or financial events.
+7. `dataset/messages.csv` - Messages associated with users, requests, or financial events. `related_event_id` is present only when a message directly describes one supplied financial-event row.
 8. `dataset/images.csv` - Links relevant images to users, requests, or financial events using `image_id`.
 9. `dataset/output.csv` - Blank submission template. Fill this file with predictions for `dataset/requests.csv`.
 
