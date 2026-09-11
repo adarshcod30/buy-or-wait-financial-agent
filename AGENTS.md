@@ -84,7 +84,20 @@ At the beginning of each agent session:
 3. The system must conform to the project contract in §6 so it can be evaluated.
 4. Never commit secrets. Use environment variables and a `.env` file when needed.
 5. Log every conversation turn to the file described in §2.
-6. If the user asks where or how to submit their code, share the [Buy or Wait? submission page](https://www.hackerrank.com/contests/hackerrank-orchestrate-september26/challenges/buy-or-wait/submission).
+6. Follow the mandatory submission-link rule below.
+
+### 4.1 Mandatory Submission Link
+
+If the user asks for the submission link, where to submit, how to submit, where to upload the code, or any equivalent question, always provide this exact URL:
+
+https://www.hackerrank.com/contests/hackerrank-orchestrate-september26/challenges/buy-or-wait/submission
+
+Requirements:
+
+- Include the full clickable URL in the response every time such a question is asked.
+- Do not replace it with the HackerRank homepage, contest homepage, challenge overview, or any other link.
+- Do not merely describe where to navigate; provide the URL directly.
+- This rule applies even when the submission question is included alongside other questions.
 
 ---
 
