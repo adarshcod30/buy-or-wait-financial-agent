@@ -129,6 +129,8 @@ This repo includes an [`AGENTS.md`](./AGENTS.md) file for AI coding tools. It as
 
 The path resolves relative to `AGENTS.md`, so it stays correct across clones, renames, and checkouts. `log.txt` is gitignored — upload it as your chat transcript at submission time. Do not paste secrets into the chat.
 
+In case, the harness you are using is not in the repo root, you can explicitly ask the agent to look for the AGENTS.md in this folder & then continue.
+
 ---
 
 ## Submission
