@@ -10,7 +10,7 @@
 [![Runtime deps](https://img.shields.io/badge/runtime%20deps-1%20(boto3)-blue)](requirements.txt)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#license)
 
-*Built for **HackerRank Orchestrate, September 2026**, a 24-hour agentic-AI hackathon. The organizer starter README is kept in [docs/ORGANIZER_STARTER_README.md](docs/ORGANIZER_STARTER_README.md); the challenge text is in [problem_statement.md](problem_statement.md).*
+*Built for **HackerRank Orchestrate, September 2026**, a 24-hour agentic-AI hackathon.*
 
 </div>
 
@@ -284,7 +284,7 @@ rationale. `runs/run_summary.json` holds the distributions above.
 ```text
 code/
 ├── main.py                     CLI: run | evidence | evaluate | validate
-├── README.md                   project README (same as the repository root README)
+├── README.md                   this file
 ├── DESIGN_NOTES.md             decisions, evidence, rejected alternatives
 ├── requirements.txt            boto3, botocore[crt] (pytest for tests)
 ├── .env.example                configuration variables
