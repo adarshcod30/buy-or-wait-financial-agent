@@ -195,10 +195,11 @@ The solution must write `output.csv` with these exact columns, in this order:
 request_id,amount_safe_to_pay,affordability_status,recommended_payment_method,payment_plan,earliest_date_for_full_payment,spending_changes_needed,decision_explanation
 ```
 
-- `amount_safe_to_pay` is between `0` and `requested_amount` inclusive.
+- `amount_safe_to_pay` is the amount safe on `request_date` before optional spending changes and is between `0` and `requested_amount` inclusive.
 - `affordability_status` is one of `affordable_now`, `affordable_with_plan`, `affordable_later`, or `not_affordable`.
 - `recommended_payment_method` is one of `full_payment`, `partial_payment`, `installments`, `wait`, or `not_recommended`.
-- `payment_plan` is chronological `YYYY-MM-DD:amount` entries separated by `|`, or `none`. An installment recommendation must exactly match a supplied payment option.
+- `affordable_with_plan` means the full request is completed through a partial-payment schedule, installments, or permitted spending changes.
+- `payment_plan` is chronological `YYYY-MM-DD:amount` entries separated by `|`, or `none`. For `partial_payment`, use exactly two payments: `amount_safe_to_pay` on `request_date`, then `requested_amount - amount_safe_to_pay` on `earliest_date_for_full_payment`. Recommend it only when the request allows it, the user accepts it, `0 < amount_safe_to_pay < requested_amount`, and the second payment is on or before `desired_completion_date`. The two payments must add up to `requested_amount`. An installment plan must instead follow a supplied payment option.
 - `earliest_date_for_full_payment` is the first conservative projected date for one safe full payment. It equals `request_date` for `affordable_now` and is empty when no full payment is safe within the forecast period.
 - `spending_changes_needed` is `none` or up to three `stop:<event_id>` and `reduce_to:<event_id>:<new_amount>` actions. Only non-protected, flexible events in a category the user permits may be changed.
 - `decision_explanation` is a concise, grounded explanation of the recommendation.

@@ -39,7 +39,7 @@ Read [`problem_statement.md`](./problem_statement.md) for the full task spec, in
         └── images/
 ```
 
-Only `dataset/requests.csv` requires predictions. Everything else is context. All files link on `user_id` and `request_id`.
+Only `dataset/requests.csv` requires predictions. Everything else is context. Join user records with `user_id`, request records with `request_id`, supporting evidence with `related_event_id`, and exchange rates with the rate date and currency pair.
 
 Amounts are in the user's `home_currency` — the dataset uses INR, ZAR, IDR, USD, and EUR, and every conversion rate you need is in `exchange_rates.csv`. All dates are `YYYY-MM-DD`. Live exchange rates, market data, and banking access are not required.
 
@@ -52,7 +52,7 @@ For every row in `dataset/requests.csv`, produce one row in `output.csv` with:
 | Column | Meaning |
 |---|---|
 | `request_id` | The request being answered |
-| `amount_safe_to_pay` | Largest amount safe to pay on `request_date`, after protecting essentials and the minimum balance |
+| `amount_safe_to_pay` | Largest amount safe to pay on `request_date` before optional spending changes, after protecting essentials and the minimum balance |
 | `affordability_status` | `affordable_now`, `affordable_with_plan`, `affordable_later`, or `not_affordable` |
 | `recommended_payment_method` | `full_payment`, `partial_payment`, `installments`, `wait`, or `not_recommended` |
 | `payment_plan` | Chronological `<YYYY-MM-DD>:<amount>` entries joined by `\|`, or `none` |
@@ -62,13 +62,15 @@ For every row in `dataset/requests.csv`, produce one row in `output.csv` with:
 
 `0 <= amount_safe_to_pay <= requested_amount` must always hold. Installment plans must exactly match a supplied payment option, and only recurring expenses marked flexible may be changed.
 
+`affordable_with_plan` means the full request is completed through a partial-payment schedule, installments, or permitted spending changes. Recommend `partial_payment` only when the request allows it, the user accepts it, `0 < amount_safe_to_pay < requested_amount`, and `earliest_date_for_full_payment` is on or before `desired_completion_date`. Use exactly two payments: pay `amount_safe_to_pay` on `request_date`, then pay the remaining amount on `earliest_date_for_full_payment`. The two payments must add up to `requested_amount`. Unlike installments, partial payment does not need to match a supplied payment option.
+
 ---
 
 ## Suggested Workflow
 
 1. Inspect `dataset/sample_requests.csv` — 25 requests with completed output columns — to understand the expected format and decision style.
 2. Reconstruct each user's financial state from `financial_profiles.csv` and `financial_events.csv`: separate recurring expenses from one-time events, reserve pending transactions, count confirmed salary only on its settlement date, and de-duplicate repeated representations of the same event.
-3. Pull in the relevant messages, images, and payment options for the request.
+3. When an event has a blank `amount`, find its `event_id` as `related_event_id` in `images.csv` and extract the amount from the linked image. Never treat a blank amount as zero. Pull in any other relevant messages, images, and payment options for the request.
 4. Forecast forward and generate a plan that keeps the balance above the minimum at every step.
 5. Verify deterministically — bounds, plan feasibility, schedule match, flexible-only spending changes — before writing `output.csv`.
 6. Score yourself on the solved samples, then run the full dataset.
@@ -104,11 +106,10 @@ The scoring will consider:
 - accuracy of `earliest_date_for_full_payment`
 - validity of `spending_changes_needed`
 - usefulness and consistency of `decision_explanation`
-- token usage and estimated cost
 
 ### Token Usage And Cost Analysis
 
-Cost is part of the score. Your `code.zip` must include one token-usage file:
+Your `code.zip` must include one token-usage file:
 
 ```text
 evaluation/usage_report.md

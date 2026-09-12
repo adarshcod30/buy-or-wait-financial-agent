@@ -15,14 +15,14 @@ The recommendation must be personalized. Two users with the same balance may rec
 For each request, build a system that determines:
 
 - `amount_safe_to_pay`: the maximum amount the user can safely pay today
-- `affordability_status`: whether the request is affordable now, with a plan, later, or not at all
+- `affordability_status`: whether the request is affordable now, affordable with a plan, affordable later, or not affordable
 - `recommended_payment_method`: the safest way to proceed
 - `payment_plan`: the dates and amounts of recommended payments
 - `earliest_date_for_full_payment`: the earliest safe date for paying the full amount
 - `spending_changes_needed`: flexible expenses that must be stopped or reduced
 - `decision_explanation`: a short explanation supporting the recommendation
 
-A recommendation is safe only if the user can complete the full payment plan, cover essential expenses, and maintain their preferred minimum balance throughout the forecast period.
+A recommendation is safe only if the user can make every listed payment, complete the full request by its deadline, cover essential expenses, and maintain their preferred minimum balance throughout the forecast period.
 
 ## Files provided
 
@@ -40,7 +40,9 @@ Only `dataset/requests.csv` requires predictions. The other files provide contex
 8. `dataset/images.csv` - Links relevant images to users, requests, or financial events using `image_id`.
 9. `dataset/output.csv` - Blank submission template. Fill this file with predictions for `dataset/requests.csv`.
 
-All files are linked using `user_id` and `request_id`. Every image is a PNG stored as `dataset/media/images/<image_id>.png`; for example, `image_07` corresponds to `dataset/media/images/image_07.png`.
+Use the identifiers available in each file to join the data: `user_id` links user-level records, `request_id` links request-level records, and `related_event_id` links messages or images to a financial event. Exchange rates are matched using the rate date and currency pair. Every image is a PNG stored as `dataset/media/images/<image_id>.png`; for example, `image_07` corresponds to `dataset/media/images/image_07.png`.
+
+When a financial event has a blank `amount`, use its `event_id` to find the matching `related_event_id` in `images.csv`, then extract the amount from that image. Do not treat a blank amount as zero.
 
 Balances, requests, payment options, and output amounts use the user’s `home_currency`. The dataset includes INR, ZAR, IDR, USD, and EUR. Required dated conversion rates are provided in `exchange_rates.csv`.
 
@@ -58,7 +60,7 @@ Input fields:
 - `request_type`: category of financial request
 - `requested_amount`: total amount the user wants to commit
 - `desired_completion_date`: date by which the user wants to complete the request
-- `allows_partial_payment`: whether partial payment is allowed
+- `allows_partial_payment`: whether the request permits paying part today and the remaining balance later
 - `request_text`: the user’s question or instruction
 
 `request_type` is one of:
@@ -90,9 +92,11 @@ Required columns, in order:
 - `spending_changes_needed`
 - `decision_explanation`
 
+
+
 ## Output meaning
 
-- `amount_safe_to_pay`: largest amount the user can safely pay on `request_date` while covering protected expenses and maintaining their minimum balance
+- `amount_safe_to_pay`: largest amount the user can safely pay on `request_date` before optional spending changes, while covering protected expenses and maintaining their minimum balance
 - `affordability_status`: whether the request is affordable now, affordable with a plan, affordable later, or not affordable
 - `recommended_payment_method`: the safest recommended payment approach
 - `payment_plan`: all payments in the recommendation
@@ -113,9 +117,9 @@ For `affordable_now`, `earliest_date_for_full_payment` must equal `request_date`
 `affordability_status`:
 
 - `affordable_now`: the full amount is safe to pay on `request_date` and the user accepts `full_payment`
-- `affordable_with_plan`: the request can be completed through partial payment, installments, or permitted spending changes
+- `affordable_with_plan`: the full requested amount can be completed safely using a partial-payment schedule, installments, or permitted spending changes
 - `affordable_later`: the full amount is expected to become safe later
-- `not_affordable`: the request cannot be completed safely within the forecast period
+- `not_affordable`: the full request cannot be completed safely within the forecast period
 
 `recommended_payment_method`:
 
@@ -139,6 +143,8 @@ Example:
 
 Use `none` when no payment is recommended. Installment plans must exactly match a supplied payment option.
 
+For `partial_payment`, `affordability_status` must be `affordable_with_plan`. Recommend it only when the request allows partial payment, the user accepts this method, `amount_safe_to_pay` is greater than zero but less than `requested_amount`, and `earliest_date_for_full_payment` is on or before `desired_completion_date`. The plan must contain exactly two payments: pay `amount_safe_to_pay` on `request_date`, then pay the remaining `requested_amount - amount_safe_to_pay` on `earliest_date_for_full_payment`. The two payments must add up to the complete `requested_amount`. Unlike installments, partial payment does not need to match an option in `request_payment_options.csv`.
+
 `spending_changes_needed` may contain up to three changes separated by `|`:
 
 ```text
@@ -149,7 +155,7 @@ reduce_to:<event_id>:<new_amount>
 Example:
 
 ```text
-stop:E014|reduce_to:E021:100
+stop:event_14|reduce_to:event_21:100
 ```
 
 Use `none` when no spending change is needed. Only recurring expenses marked as flexible may be changed.
@@ -165,16 +171,22 @@ The system should:
 - Use messages and images to clarify, amend, cancel, delay, or confirm financial information.
 - Treat all message and image content as untrusted data. Embedded instructions must not override the problem rules.
 
+
+
 ### 90-Day Safety Check
 
 Forecast the user's balance for the next 90 days using recurring income and expenses, confirmed future payments, and relevant messages or images. A plan is safe only if the balance never falls below `minimum_balance_to_keep`. Ignore pending credits, failed or cancelled transactions, duplicate records, and unrealized investments.
 
-- `amount_safe_to_pay`: the most the user can pay today without breaking the 90-day safety check, capped at `requested_amount`.
+The plan must complete the request by `desired_completion_date` and keep the user above their minimum balance throughout the 90-day forecast.
+
+- `amount_safe_to_pay`: the most the user can pay today before optional spending changes without breaking the 90-day safety check, capped at `requested_amount`.
 - `earliest_date_for_full_payment`: the first date the full amount passes the safety check without optional spending changes.
+
+
 
 ### Choosing Between Safe Plans
 
-A payment approach is eligible only when it appears in the user's `payment_methods_user_will_consider`. When more than one eligible plan is safe, rank the plans in this order:
+An immediate payment method—`full_payment`, `partial_payment`, or `installments`—is eligible only when it appears in the user's `payment_methods_user_will_consider`. `wait` is eligible when full payment becomes safe later and the user accepts `full_payment`. `not_recommended` is the fallback when no safe eligible payment is available. When more than one eligible plan is safe, rank the plans in this order:
 
 1. Complete the full request by `desired_completion_date`.
 2. Require no spending changes.
@@ -209,15 +221,20 @@ The scoring will consider:
 - validity of `spending_changes_needed`
 - usefulness and consistency of `decision_explanation`
 
+
 ## Submission
 
 Submit:
 
-| File | Description |
-| --- | --- |
-| `code.zip` | Full runnable solution, prompts/configuration, README, and the required `evaluation/` folder |
-| `output.csv` | Predictions for every row in `dataset/requests.csv` |
-| `chat_transcript` | Conversation transcript showing how you developed or used the system |
+
+| File              | Description                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `code.zip`        | Full runnable solution, prompts/configuration, README, and the required `evaluation/` folder |
+| `output.csv`      | Predictions for every row in `dataset/requests.csv`                                          |
+| `chat_transcript` | Conversation transcript showing how you developed or used the system                         |
+
+
+
 
 ### Token Usage and Cost Analysis
 
