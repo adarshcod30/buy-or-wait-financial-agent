@@ -134,12 +134,14 @@ Actions:
 * <file edited / command run / tool invoked>
 
 Context:
-tool=<agent_name>
+tool=<exact_harness_or_coding_agent_name>
 branch=<git_branch_or_unknown>
 repo_root=<absolute_path>
 worktree=<worktree_path_or_main>
 parent_agent=<parent_name_or_none>
 ```
+
+**Strict rule:** `tool=` must contain the exact name of the coding harness or agent being used, such as `Codex CLI`, `Claude Code`, `Cursor`, `Gemini CLI` or the exact coding harness or agent that is being used. Never replace it with a generic label such as `AI` or only the underlying model name.
 
 ### 5.3 Sub-Agent And Worktree Rules
 
