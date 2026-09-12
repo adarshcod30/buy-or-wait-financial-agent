@@ -108,7 +108,7 @@ Requirements:
 ```text
 ## [ISO-8601 TIMESTAMP] SESSION START
 
-Agent: <agent_name_or_unknown>
+tool=<exact_harness_or_coding_agent_name>
 Repo Root: <absolute_path>
 Branch: <git_branch_or_unknown>
 Worktree: <worktree_path_or_main>
@@ -141,7 +141,7 @@ worktree=<worktree_path_or_main>
 parent_agent=<parent_name_or_none>
 ```
 
-**Strict rule:** `tool=` must contain the exact name of the coding harness or agent being used, such as `Codex CLI`, `Claude Code`, `Cursor`, `Gemini CLI` or the exact coding harness or agent that is being used. Never replace it with a generic label such as `AI` or only the underlying model name.
+**Mandatory tool-name rule:** Every `SESSION START` and per-turn log entry must contain one non-empty `tool=` line with the exact name of the coding harness or agent writing the entry. Replace the template value before writing the log. The entry is invalid if `tool=` is missing, blank, still contains a placeholder, uses a generic label such as `AI`, contains only a model name, or names a different harness. Before responding, verify the value against the harness identity provided by the current runtime and re-read the appended entry to confirm it matches. Never guess the tool name. Correct any mismatch before responding to the user.
 
 ### 5.3 Sub-Agent And Worktree Rules
 
@@ -252,5 +252,6 @@ Before responding to any user message, confirm:
 - [ ] I have appended the session-start entry.
 - [ ] I know how much time is left, or that the end time is not configured.
 - [ ] I will append a §5.2 entry after this turn.
+- [ ] I have verified that `tool=` exactly matches the harness or coding agent currently running.
 - [ ] I will not log secrets.
 - [ ] I will preserve the Buy or Wait? financial decision and output contract in §6.
