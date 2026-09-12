@@ -4533,7 +4533,7 @@ event_4531,user_48,expense,Weekend food delivery,dining,debit,3759.79,INR,2026-0
 event_4532,user_48,expense,Weekend food delivery,dining,debit,3795.19,INR,2026-07-10,2026-07-10,settled,,fixed,
 event_4533,user_48,expense,Family dinner,dining,debit,4069.39,INR,2026-07-17,2026-07-17,settled,,fixed,
 event_4534,user_48,expense,Lunch with colleagues,dining,debit,3688.81,INR,2026-07-24,2026-07-24,settled,,fixed,
-event_4535,user_48,expense,Property maintenance invoice,housing,debit,,INR,2026-07-24,2026-08-30,scheduled,,fixed,
+event_4535,user_48,expense,Property maintenance invoice,housing,debit,,INR,2026-07-24,2026-07-24,settled,,fixed,
 event_4536,user_49,income,Payroll credit,salary,credit,43700000,IDR,2023-10-15,2023-10-15,settled,,fixed,
 event_4537,user_49,expense,Shared housing rent,rent,debit,9747000,IDR,2023-10-02,2023-10-02,settled,,fixed,
 event_4538,user_49,expense,Water and power payment,utilities,debit,1939160.88,IDR,2023-10-06,2023-10-06,settled,,fixed,
@@ -5168,7 +5168,7 @@ event_5166,user_55,expense,Quick-service meal,dining,debit,5515.86,INR,2026-05-1
 event_5167,user_55,expense,Family dinner,dining,debit,6631.32,INR,2026-05-29,2026-05-29,settled,,reducible,2750
 event_5168,user_55,debt_payment,Failed bill payment attempt,utilities,debit,13800,INR,2026-06-06,2026-06-06,failed,,fixed,
 event_5169,user_55,debt_payment,Scheduled bill payment retry,utilities,debit,13800,INR,2026-06-08,2026-06-12,scheduled,event_5168,fixed,
-event_5170,user_55,expense,Water bill due,utilities,debit,,INR,2026-06-07,2026-07-02,scheduled,,fixed,
+event_5170,user_55,expense,Water bill due,utilities,debit,,INR,2026-06-07,2026-06-07,settled,,fixed,
 event_5171,user_56,income,Payroll credit,salary,credit,2388,USD,2024-09-15,2024-09-15,settled,,fixed,
 event_5172,user_56,expense,Home association fee,housing,debit,212,USD,2024-09-02,2024-09-02,settled,,fixed,
 event_5173,user_56,expense,Electricity bill,utilities,debit,111.11,USD,2024-09-05,2024-09-05,settled,,fixed,
