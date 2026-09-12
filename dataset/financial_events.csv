@@ -6031,7 +6031,7 @@ event_6029,user_64,expense,Bakery and snacks,dining,debit,1796.32,INR,2024-05-13
 event_6030,user_64,expense,Coffee shop,dining,debit,1760.41,INR,2024-05-20,2024-05-20,settled,,fixed,
 event_6031,user_64,expense,Quick-service meal,dining,debit,1166.25,INR,2024-05-27,2024-05-27,settled,,fixed,
 event_6032,user_64,expense,Bakery and snacks,dining,debit,1090.24,INR,2024-06-03,2024-06-03,settled,,fixed,
-event_6033,user_64,expense,Large grocery tax invoice,groceries,debit,,INR,2024-06-03,2024-06-03,settled,,fixed,
+event_6033,user_64,expense,Large grocery tax invoice,groceries,debit,,INR,2024-06-03,2024-06-10,pending,,fixed,
 event_6034,user_64,expense,Scheduled school fee,education,debit,2240,INR,2024-06-04,2024-06-11,scheduled,,fixed,
 event_6035,user_65,income,Payroll credit,salary,credit,22220,ZAR,2025-06-15,2025-06-15,settled,,fixed,
 event_6036,user_65,expense,Home association fee,housing,debit,2519,ZAR,2025-06-03,2025-06-03,settled,,fixed,
