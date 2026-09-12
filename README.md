@@ -18,6 +18,44 @@ Read [`problem_statement.md`](./problem_statement.md) for the full task spec, in
 
 ---
 
+## Quick Start
+
+Clone the repository and move into the project directory:
+
+```bash
+git clone https://github.com/interviewstreet/hackerrank-orchestrate-september26.git
+cd hackerrank-orchestrate-september26
+```
+
+Build your solution in `code/main.py`, or use another language and document its entry point clearly.
+
+Your solution must:
+
+- Read the input files from `dataset/`
+- Generate one prediction for every request
+- Write the final predictions to `output.csv` in the repository root
+
+Run the starter Python entry point with:
+
+```bash
+python3 code/main.py
+```
+
+After running your solution, confirm that `output.csv` exists in the repository root and contains the required columns and one row for every request.
+
+## Important File Locations
+
+```text
+dataset/        Input data and the blank output template. Do not modify the input data.
+code/           Your solution code.
+output.csv      Final generated predictions in the repository root.
+code.zip        ZIP file containing your complete solution for submission.
+```
+
+The blank template at `dataset/output.csv` is provided as a reference. Your final generated file must be the root-level `output.csv`.
+
+---
+
 ## Repository Layout
 
 ```text
@@ -25,6 +63,8 @@ Read [`problem_statement.md`](./problem_statement.md) for the full task spec, in
 ├── AGENTS.md                         # Rules for AI coding tools + transcript logging
 ├── problem_statement.md              # Full challenge statement
 ├── README.md                         # You are here
+├── code/                             # Your solution code
+├── output.csv                        # Final generated predictions
 └── dataset/
     ├── requests.csv                  # 250 requests to evaluate — predict these
     ├── output.csv                    # Blank submission template
