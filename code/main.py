@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from buyorwait.config import PATHS  # noqa: E402
 from buyorwait.data import load_dataset  # noqa: E402
-from buyorwait.evidence import build_evidence, facts_by_request, load_facts_file, save_facts_file  # noqa: E402
+from buyorwait.evidence import build_evidence, coverage, facts_by_request, load_facts_file, save_facts_file  # noqa: E402
 from buyorwait.llm.bedrock import BedrockClient, DEFAULT_MODEL  # noqa: E402
 from buyorwait.pipeline import decide_request  # noqa: E402
 from buyorwait.state import Policy  # noqa: E402
@@ -33,6 +33,16 @@ from buyorwait.verify import OUTPUT_COLUMNS, verify_row  # noqa: E402
 
 log = logging.getLogger("buyorwait")
 FACTS_PATH = PATHS.cache / "facts.json"
+# Shipped with the code so a fresh checkout reproduces output.csv with no credentials and no model
+# spend. `.cache/facts.json` wins when present, so a re-extraction transparently supersedes it.
+BUNDLED_FACTS = Path(__file__).resolve().parent / "evidence" / "facts.json"
+
+
+def _facts_path(explicit: str | None) -> Path | None:
+    for candidate in (Path(explicit) if explicit else None, FACTS_PATH, BUNDLED_FACTS):
+        if candidate and candidate.is_file():
+            return candidate
+    return None
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -52,8 +62,12 @@ def cmd_evidence(args) -> int:
     ds = load_dataset()
     client = _client(args)
     bundle = build_evidence(ds, client)
+    cov = coverage(ds, bundle)
+    if not cov["complete"]:
+        log.error("INCOMPLETE EXTRACTION %s - not saved. Re-run with working credentials.", json.dumps(cov))
+        return 1
     save_facts_file(bundle, FACTS_PATH)
-    log.info("facts: %d (%s)", len(bundle.facts), FACTS_PATH)
+    log.info("facts: %d, coverage %s (%s)", len(bundle.facts), json.dumps(cov), FACTS_PATH)
     for n in bundle.notes:
         log.info("note: %s", n)
     if client:
@@ -67,14 +81,25 @@ def cmd_run(args) -> int:
     ds = load_dataset()
     log.info("dataset: %s", json.dumps(ds.stats))
     client = _client(args)
-    if args.facts and Path(args.facts).is_file():
-        facts = load_facts_file(Path(args.facts))
-        evidence_notes = json.loads(Path(args.facts).read_text()).get("notes", [])
+    fp = _facts_path(args.facts)
+    if fp and not args.refresh_evidence:
+        log.info("using extracted evidence from %s", fp)
+        facts = load_facts_file(fp)
+        evidence_notes = json.loads(fp.read_text()).get("notes", [])
     else:
         bundle = build_evidence(ds, client)
-        save_facts_file(bundle, FACTS_PATH)
-        facts = facts_by_request(ds, bundle)
-        evidence_notes = bundle.notes
+        cov = coverage(ds, bundle)
+        if not cov["complete"]:
+            log.error("INCOMPLETE EXTRACTION %s - refusing to overwrite the cached evidence; "
+                      "falling back to the bundled facts", json.dumps(cov))
+            fallback = BUNDLED_FACTS if BUNDLED_FACTS.is_file() else None
+            if fallback is None:
+                return 1
+            facts, evidence_notes = load_facts_file(fallback), ["incomplete extraction; bundled facts used"]
+        else:
+            save_facts_file(bundle, FACTS_PATH)
+            facts = facts_by_request(ds, bundle)
+            evidence_notes = bundle.notes
     policy = Policy(debits_before_credits=args.debits_first)
     requests = ds.requests[: args.limit] if args.limit else ds.requests
     PATHS.runs.mkdir(parents=True, exist_ok=True)
@@ -224,11 +249,11 @@ def cmd_evaluate(args) -> int:
     from evaluation.main import evaluate
     ds = load_dataset()
     facts = {}
-    fp = Path(args.facts) if args.facts else FACTS_PATH
-    if fp.is_file():
+    fp = _facts_path(args.facts)
+    if fp:
         facts = load_facts_file(fp)
     else:
-        log.warning("no facts file at %s; evaluating without message or image evidence", fp)
+        log.warning("no extracted evidence found; evaluating without message or image evidence")
     summary, _ = evaluate(ds, facts, Policy(debits_before_credits=args.debits_first), show=args.show)
     print(json.dumps(summary, indent=2))
     return 0
@@ -246,6 +271,8 @@ def main(argv=None) -> int:
         p.add_argument("--output", default=None)
         p.add_argument("--limit", type=int, default=0)
         p.add_argument("--debits-first", action="store_true", help="clear a day's debits before its credits")
+        p.add_argument("--refresh-evidence", action="store_true",
+                       help="re-extract messages and images instead of using the cached facts")
         p.add_argument("--no-ensemble", action="store_true",
                        help="single central forecast only; skip the uncertainty ensemble and its confidence")
         p.add_argument("--show", default=None)

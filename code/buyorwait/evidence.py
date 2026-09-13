@@ -227,6 +227,19 @@ def facts_by_request(ds: Dataset, bundle: EvidenceBundle) -> Dict[str, List[Fact
     return out
 
 
+def coverage(ds: Dataset, bundle: EvidenceBundle) -> dict:
+    """How complete this extraction is. A run that silently lost image reads, for example because
+    credentials expired mid-extraction, produces a valid-looking file with missing facts; this makes
+    that visible instead of letting it degrade the output."""
+    resolved = {f.related_event_id for f in bundle.facts if f.fact_type == "blank_amount_resolved"}
+    blanks = {e.event_id for e in ds.events if e.amount is None}
+    messages = {m.message_id for v in ds.messages_by_user.values() for m in v}
+    classified = {f.source_id for f in bundle.facts if f.source_kind == "message"}
+    return {"images_expected": len(blanks), "images_resolved": len(blanks & resolved),
+            "messages_expected": len(messages), "messages_classified": len(messages & classified),
+            "complete": blanks <= resolved and messages <= classified}
+
+
 def save_facts_file(bundle: EvidenceBundle, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"facts": [
