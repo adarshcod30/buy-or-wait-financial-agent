@@ -66,6 +66,7 @@ class Policy:
     horizon_days: int = FORECAST_DAYS
     budget_quantile: Optional[float] = None   # None = the method's central value; else the posterior quantile
     budget_method: str = "mean"               # mean | posterior | midrange (see budget.py)
+    cadence_mode: str = "mean"                # mean (unbucketed gap, default) | median (bucketed)
     variable_window_days: int = 180
     debits_before_credits: bool = False
     pending_debits_immediate: bool = True
@@ -97,11 +98,21 @@ def add_months(d: dt.date, n: int) -> dt.date:
     return dt.date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
 
 
-def cadence_days(dates: List[dt.date]) -> Optional[object]:
-    """'M' for monthly, an int for a fixed number of days, None when irregular."""
+def cadence_days(dates: List[dt.date], mode: str = "median") -> Optional[object]:
+    """'M' for monthly, an int for a fixed number of days, None when irregular.
+
+    `mode="mean"` uses the unbucketed mean gap. That matters over long horizons: a series that
+    truly fires four times a month has a mean gap of about 7.6 days, and bucketing it to 7
+    over-projects by roughly 8% across a 90-day forecast.
+    """
     if len(dates) < 2:
         return None
     gaps = [(b - a).days for a, b in zip(dates, dates[1:])]
+    if mode == "mean":
+        g = statistics.fmean(gaps)
+        if 26 <= g <= 33:
+            return "M"
+        return max(1, int(round(g))) if g >= 2 else None
     med = statistics.median(gaps)
     if 26 <= med <= 33:
         return "M"
@@ -364,7 +375,7 @@ def reconstruct(ds: Dataset, user_id: str, request_date: dt.date, facts: List[Fa
         group.sort(key=lambda e: (e.event_date, e.event_id))
         if cat in VARIABLE_CATEGORIES:
             recent = [e for e in group if e.event_date >= request_date - dt.timedelta(days=policy.variable_window_days)] or group
-            cad = cadence_days([e.event_date for e in recent])
+            cad = cadence_days([e.event_date for e in recent], policy.cadence_mode)
             amounts = [to_home(e.amount, e.currency, e.settlement_date, e.event_id) for e in recent]
             latest = group[-1]
             budget = _budget(amounts, cat, widths, latest.minimum_allowed_amount, policy)
@@ -398,7 +409,7 @@ def reconstruct(ds: Dataset, user_id: str, request_date: dt.date, facts: List[Fa
                 g.sort(key=lambda e: (e.event_date, e.event_id))
                 if len(g) < policy.min_occurrences:
                     continue
-                cad = cadence_days([e.event_date for e in g])
+                cad = cadence_days([e.event_date for e in g], policy.cadence_mode)
                 if cad is None:
                     continue
                 amounts = [to_home(e.amount, e.currency, e.settlement_date, e.event_id) for e in g]

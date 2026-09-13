@@ -19,6 +19,10 @@ from .evidence_types import FACT_TYPES, EvidenceBundle, Fact
 from .llm.bedrock import BedrockClient
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
+
+# Fact types that introduce money the forecast would otherwise not count.
+ADDS_FUTURE_INCOME = {"salary_confirmed", "salary_amount_change", "invoice_approved",
+                      "one_time_credit_confirmed"}
 _AMT = r"(?:IDR|INR|ZAR|USD|EUR)\s?([\d][\d,]*(?:\.\d+)?)"
 _DATE = r"(\d{4}-\d{2}-\d{2})"
 
@@ -179,7 +183,17 @@ def build_evidence(ds: Dataset, client: Optional[BedrockClient]) -> EvidenceBund
             lf = llm_message_fact(client, m) if client else None
             fact = lf or rf
             if lf and rf.fact_type != "other" and lf.fact_type != rf.fact_type:
-                if rf.fact_type in ("one_time_credit_confirmed", "rent_increase_pct", "salary_date_change"):
+                if rf.fact_type == "already_settled_credit" and lf.fact_type in ADDS_FUTURE_INCOME:
+                    # Two independent readers disagree, and the model's reading would add income
+                    # the other reader says has already been received. The challenge's conflict
+                    # rule resolves this on "a settled event, then the financially safer
+                    # interpretation", so the settled reading wins. Found by cross-reading all 215
+                    # messages with a second model: it caught message_174, the Indonesian twin of
+                    # message_117, which the primary model classified as a future credit.
+                    fact = rf
+                    bundle.notes.append(f"{m.message_id}: model={lf.fact_type} but a second reader and the "
+                                        f"pattern rules both read already_settled_credit; safer reading kept")
+                elif rf.fact_type in ("one_time_credit_confirmed", "rent_increase_pct", "salary_date_change"):
                     # The template carries two facts (e.g. regular salary plus a one-off arrears line);
                     # keep the model's primary classification and the regex secondary fact.
                     bundle.facts.append(rf)

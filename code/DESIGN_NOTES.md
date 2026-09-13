@@ -65,10 +65,14 @@ days of expenses with zero income; request_05's last row is "Final employer payr
 sample is not affordable; request_13's second household income stopped two months before the
 request and the sample ignores it.
 
-**Known cost.** Sample request_09 (a freelancer with eight one-off project payments) is affordable
-in the gold data and not in ours. The conservative reading of "do not invent unsupported future
-income" loses that row; projecting freelance income would risk the opposite error on the 250
-evaluation requests.
+**Confirmed against the gold troughs, and an earlier claim corrected.** An earlier version of this
+note said sample request_09 was lost because freelance income is not projected. That was wrong, and
+the subset-sum work in section 15 disproved it. Reconstructing what the gold trough implies for the
+three users with no payroll shows the organizer projects no irregular income either: request_09's
+gold trough is 766.61 against our 630.76, a gap of 136 over ninety days, whereas projecting that
+user's 2,795 of freelance history would overshoot by an order of magnitude. The same holds for
+request_10, a gig worker with four payout streams, and request_05, whose contract ended. The rule
+is right; those rows are lost to accumulated spending over-projection, not to missing income.
 
 ## 5. Variable spending: category cadence and per-occurrence budgets
 
@@ -223,3 +227,74 @@ counterexample at 23 October until its payroll message is applied, which moves t
 to the 23rd. The 250-row output satisfies this property on all 184 non-empty dates without any
 snapping rule, which is a useful independent check that the income projection is landing on the
 right days.
+
+
+## 15. Solving the gold troughs for integer budgets
+
+Section 11 established that the generator projects future spending at exact integer budgets. That
+makes each solved sample an equation rather than a data point. For a sample whose safe amount is
+below the requested amount, the gold trough is pinned exactly, so
+
+    gold_outflow = sum(exact flows in the window) + sum over noisy series of count * budget
+
+with the budgets constrained to integers on the currency grid inside their feasible intervals. A
+branch-and-bound search over that system was run on all 21 trough-pinning samples.
+
+**What it settled.**
+
+* The window is the day before the first projected income day, in 20 of 20 samples that have
+  income. Between two income days the balance only falls, so the trough within a span is the last
+  debit before the next credit.
+* 19 of 21 residuals come out as exact integers once utilities and healthcare are moved from the
+  "exact" side to the noisy side, where they belong: they are monthly but noisy, at ±12%.
+  That is independent confirmation of the integer-budget model, since a wrong decomposition would
+  almost never land on an integer.
+* 8 of 20 samples are exactly solvable with the occurrence counts the current cadence produces.
+  Request_22 solves uniquely, at dining 17, groceries 25, transport 13 and utilities 31.
+* The global 90-day minimum is the right definition of the trough. Restricting it to the window
+  before the first income was tested and is worse: it leaves request_13 at 40.6% error against
+  3.3% for the global minimum.
+
+**What it did not settle.** The remaining 12 samples need occurrence counts one different from
+ours, and no simple placement rule explains which. Five hypotheses were tested by asking how many
+samples become exactly solvable with no count slack: the current bucketed-median cadence gives 5
+of 21, including the request day gives 5, cadence measured over the last 90 days gives 5, and the
+unbucketed mean gap gives 6. Replaying each category's observed monthly rhythm forward, rather
+than stepping by a cadence, was also tested and is worse (median trough error 3.52% against
+2.88%). The exact placement rule remains unrecovered.
+
+**What it did produce.** Two things worth having. First, a measurement that reframes the whole
+amount question: the median trough error is 1.64%, not the ~7% that `amount_safe_to_pay` reports.
+The reported field is `trough - minimum_balance_to_keep`, and on these deliberately marginal cases
+the minimum absorbs most of the balance, so subtracting it leverages a 2% trough error into
+roughly 8% on the difference. The forecast is considerably more accurate than the output column
+suggests. Second, a real fix: over short windows the trough error is under 4%, but over full
+90-day windows the projection over-spends by 9 to 17%, always in the same direction. Bucketing
+gap medians to fixed cadences is the cause. A series that truly fires four times a month has a
+mean gap near 7.6 days; bucketing it to 7 adds roughly an extra occurrence per 90 days. Switching
+to the unbucketed mean gap (`Policy.cadence_mode`, now the default) cuts median trough error from
+2.39% to 1.64% and moves no categorical field on the samples.
+
+## 16. Cross-reading the evidence with a second model
+
+`openai.gpt-oss-120b` is invocable on this account and matches the primary model at 14 of 14 on
+the typed message templates, so all 215 messages were read a second time and compared against the
+shipped extraction. Nine fact types disagreed, four of them cash-affecting. Three were the known
+dual-fact template, where a message states both a regular salary and a one-time arrears line and
+the two readers pick different halves; that case was already handled by keeping the pattern rule's
+secondary fact alongside the model's primary one.
+
+The fourth was a genuine defect. Message_174 is the Indonesian twin of message_117, both saying an
+employer credit is a reimbursement already received with nothing further scheduled. The primary
+model read the English one correctly as `already_settled_credit` and the Indonesian one as
+`one_time_credit_confirmed`, which would add a future credit that does not exist. Both the second
+model and the pattern rules read it correctly. It was inert in the shipped output because that
+message carries no amount and the arrears path requires one, but it is the exact shape of error
+that would move a decision if an amount were present, and it shows the Indonesian subset is the
+weaker half of the corpus.
+
+`evidence.py` now resolves this class of disagreement in favour of the settled reading, which is
+what the challenge's own conflict rule prescribes: an explicit settlement first, then the
+financially safer interpretation. The rule is deliberately narrow, firing only when a second
+reader and the pattern rules agree that money has already arrived while the primary model would
+schedule it in the future. It fires once on this corpus.
