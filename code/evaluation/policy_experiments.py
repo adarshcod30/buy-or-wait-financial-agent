@@ -37,8 +37,9 @@ AXES = {
     "budget_method": ["mean", "posterior", "midrange"],
     "cadence_mode": ["mean", "median"],
     "debits_before_credits": [False, True],
+    "capacity_horizon": ["capacity_only", "full", "last_income"],
 }
-SHIPPED = ("discrete", "mean", "mean", False)
+SHIPPED = ("discrete", "mean", "mean", False, "capacity_only")
 
 
 def main() -> int:
@@ -82,13 +83,13 @@ def main() -> int:
              f"{len(configs)} configurations over {len(AXES)} axes, scored on the {len(ds.samples)} solved samples.",
              "Ranking is lexicographic: categorical field hits first (five of the six graded dimensions are",
              "categorical and graded exactly), then amount accuracy within five percent.", "",
-             "| variable_model | budget_method | cadence_mode | same-day order | categorical hits /150 | amount within 5% /25 |",
-             "|---|---|---|---|---|---|"]
-    for cfg in ranked:
+             "| variable_model | budget_method | cadence_mode | same-day order | capacity horizon | categorical hits /150 | amount within 5% /25 |",
+             "|---|---|---|---|---|---|---|"]
+    for cfg in ranked[:24]:
         t = total(cfg, ids)
         mark = "  **(shipped)**" if cfg == SHIPPED else ""
         lines.append(f"| {cfg[0]} | {cfg[1]} | {cfg[2]} | {'debits first' if cfg[3] else 'end of day'} "
-                     f"| {t[0]}{mark} | {t[1]} |")
+                     f"| {cfg[4]} | {t[0]}{mark} | {t[1]} |")
     lines += ["", "## Leave-one-out cross-validation", "",
               "For each held-out sample the winning configuration is chosen using only the other 24, then",
               "scored on the held-out row. This removes the optimism of having selected on the same rows.", "",
@@ -102,10 +103,16 @@ def main() -> int:
     lines += ["", "## Reading",
               "", "The shipped configuration is the argmax on the full sample and is selected independently by",
               f"{picks[SHIPPED]} of {len(ids)} folds, so the choice is stable rather than an artefact of these rows.",
-              "The one visible trade-off is same-day ordering: clearing debits before credits cuts median amount",
-              "error substantially but costs categorical hits. Since five of the six graded dimensions are",
-              "categorical and exact while the amount is a magnitude, the categorical ranking is preferred and",
-              "the alternative is left available behind `--debits-first`."]
+              "The largest single factor is `capacity_horizon`. The 90-day window ends at an arbitrary point in",
+              "the user's pay cycle; when it lands after the last income inside the horizon, the tail is a",
+              "partial month of pure outflow whose next salary falls just outside the window, and the balance",
+              "dips at the very end for a reason that is an artefact of the cut rather than a real risk.",
+              "Measuring capacity to the last income date instead is worth ten categorical hits. Recommended",
+              "plans are still validated across the full 90 days, which is what the specification requires.",
+              "", "The other visible trade-off is same-day ordering: clearing debits before credits cuts median",
+              "amount error substantially but costs categorical hits. Since five of the six graded dimensions",
+              "are categorical and exact while the amount is a magnitude, the categorical ranking is preferred",
+              "and the alternative is left available behind `--debits-first`."]
     Path(args.out).write_text("\n".join(lines) + "\n")
     print("\n".join(lines[-14:]))
     print(f"\nwritten to {args.out}")

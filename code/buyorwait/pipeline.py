@@ -49,7 +49,8 @@ def decide_request(ds: Dataset, req: Request, facts: List[Fact], policy: Optiona
     row, whereas the second-best safe plan is still a legitimate recommendation."""
     policy = policy or Policy()
     rec = reconstruct(ds, req.user_id, req.request_date, facts, policy)
-    dec = decide(rec, req, ds.options_by_request.get(req.request_id, []), policy.debits_before_credits)
+    dec = decide(rec, req, ds.options_by_request.get(req.request_id, []), policy.debits_before_credits,
+                 policy.capacity_horizon)
     prof = ds.profiles[req.user_id]
 
     attempts = list(dec.candidates) if dec.plan is not None else [None]

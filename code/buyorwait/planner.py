@@ -294,10 +294,16 @@ def build_candidates(rec: Reconstruction, req: Request, options: List[PaymentOpt
 
 
 def decide(rec: Reconstruction, req: Request, options: List[PaymentOption],
-           debits_before_credits: bool = False) -> Decision:
-    kw = {"debits_before_credits": debits_before_credits}
-    safe, path = amount_safe_to_pay(rec, req.requested_amount, **kw)
-    earliest = earliest_full_payment_date(rec, req.requested_amount, **kw)
+           debits_before_credits: bool = False, capacity_horizon: str = "full") -> Decision:
+    # `capacity_horizon` may be applied to the whole safety check, or only to the capacity
+    # measure (amount_safe_to_pay and earliest_date), leaving recommended plans tested over the
+    # full 90 days. Both are measured; see evaluation/policy_experiments.md.
+    cap_end = rec.safety_end(capacity_horizon if capacity_horizon != "capacity_only" else "last_income")
+    plan_end = rec.horizon_end if capacity_horizon in ("full", "capacity_only") else cap_end
+    kw = {"debits_before_credits": debits_before_credits, "until": plan_end}
+    cap_kw = {"debits_before_credits": debits_before_credits, "until": cap_end}
+    safe, path = amount_safe_to_pay(rec, req.requested_amount, **cap_kw)
+    earliest = earliest_full_payment_date(rec, req.requested_amount, **cap_kw)
     cands, rejected, proofs = build_candidates(rec, req, options, safe, earliest, debits_before_credits)
     if not cands:
         return Decision(safe, earliest, "not_affordable", "not_recommended", None, cands, rejected,

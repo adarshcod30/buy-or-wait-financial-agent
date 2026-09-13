@@ -597,3 +597,58 @@ structural rather than a failure of search: the sample set supplies 21 equations
 200 unknowns, and the one metric available can falsify but not confirm. The forecast is already
 accurate to 1.64% median trough error with 14 of 21 samples inside 3%, so the practical headroom
 is bounded. This is recorded as an open limitation with its evidence, not as an unexplored corner.
+
+
+## 23. Fixing the month 2-3 drift: the horizon-tail artefact
+
+Section 22 separated the remaining wrong rows into two error modes and noted that two of them were
+not knife-edge amount cases at all. Request_08's month-one trough is accurate to 0.23% yet its
+capacity date was wrong; request_13's to 3.31% with the same symptom. Both reported no capacity date
+at all while gold gives one. That is a different defect, and it turned out to be a real one.
+
+**The mechanism.** `earliest_date_for_full_payment` is the first day whose *suffix* minimum, taken
+to the end of the forecast, still clears the minimum balance after the full payment. Printing the
+suffix minima showed where they were attained:
+
+| Sample | Gold's capacity date | Suffix minimum attained at | Horizon end |
+|---|---|---|---|
+| request_08 | 2025-04-15 | 2025-05-08 | 2025-05-08 |
+| request_13 | 2024-05-15 | 2024-06-05 | 2024-06-05 |
+
+In both cases the binding constraint is the very last day of the horizon. The 90-day window ends at
+an arbitrary point in the user's pay cycle, and here it lands 23 and 21 days after the last income
+inside the window. That tail is a partial month of pure outflow whose next salary falls just outside
+the window, so the balance dips at the end for a reason that is an artefact of where the window was
+cut, not a real risk to the user. It suppressed the capacity date for every earlier day.
+
+**The fix.** `Reconstruction.safety_end` stops the capacity measure at the last projected income date
+inside the horizon, so capacity is evaluated over whole income cycles. Applied to request_08 and
+request_13 it reproduces gold's date exactly in both, without any parameter fitted to them.
+
+**Scope, chosen deliberately.** Three variants were measured. Applying the truncation to everything
+and applying it only to the capacity measure score identically, which shows the entire gain comes
+from the capacity measure and none from plan safety. The shipped default is therefore
+`capacity_only`: `amount_safe_to_pay` and `earliest_date_for_full_payment` are measured over whole
+income cycles, while every recommended plan is still validated across the full 90 days, which is
+what the specification requires.
+
+**Measured effect**, over the full 72-configuration grid with the new axis included:
+
+| Field | Before | After |
+|---|---|---|
+| affordability_status | 20/25 | **22/25** |
+| recommended_payment_method | 21/25 | **23/25** |
+| payment_plan | 20/25 | **22/25** |
+| earliest_date_for_full_payment | 18/25 | **20/25** |
+| spending_changes_needed | 21/25 | 21/25 |
+| decision_explanation | 15/25 | **17/25** |
+| Categorical total | 115/150 | **125/150** |
+
+Amount accuracy is unchanged, which is the expected signature: the trough itself never moved, only
+the horizon over which capacity is judged. Leave-one-out cross-validation puts the out-of-sample
+figure at 121/150 with the same 2.7% selection optimism, and 23 of 25 folds still choose the shipped
+configuration.
+
+This is the largest single improvement in the build, and it came from the diagnostic in section 22
+rather than from more search: separating "knife-edge amount" from "wrong month" was what made it
+findable.

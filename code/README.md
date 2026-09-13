@@ -232,12 +232,12 @@ Claude and GPT models return AccessDenied on this account; Nova Premier is marke
 
 | Field | Exact match |
 |---|---|
-| affordability_status | 20/25 |
-| recommended_payment_method | 21/25 |
-| payment_plan | 20/25 |
-| earliest_date_for_full_payment | 18/25 |
+| affordability_status | 22/25 |
+| recommended_payment_method | 23/25 |
+| payment_plan | 22/25 |
+| earliest_date_for_full_payment | 20/25 |
 | spending_changes_needed | 21/25 |
-| decision_explanation (verbatim) | 14/25 |
+| decision_explanation (verbatim) | 17/25 |
 | amount_safe_to_pay within 5% | 11/25 (median relative error 6.8%) |
 
 Why the amounts are close but rarely exact: the organizer forecasts variable spending from hidden

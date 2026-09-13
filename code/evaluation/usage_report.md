@@ -1,23 +1,23 @@
 # Token usage and cost report
 
-Final full-dataset run that produced `output.csv`: started 2026-09-13T11:38:38, 250 requests, mode `agent`, elapsed 1.9 s.
+Final full-dataset run that produced `output.csv`: started 2026-09-13T12:00:43, 250 requests, mode `agent`, elapsed 54.7 s.
 
 Provider: Amazon Bedrock (us-east-1), Converse API, temperature 0. Prices are Bedrock on-demand list prices per 1M tokens as configured in `code/buyorwait/llm/bedrock.py`; cached calls re-use a stored response and are counted with their original token usage so the totals reflect the whole run.
 
 | Model | Calls | Live | Cached | Input tokens | Output tokens | Errors | Est. cost (USD) |
 |---|---|---|---|---|---|---|---|
-| us.amazon.nova-pro-v1:0 | 731 | 0 | 731 | 819,810 | 80,528 | 0 | 0.9135 |
+| us.amazon.nova-pro-v1:0 | 731 | 24 | 707 | 820,590 | 80,667 | 0 | 0.9146 |
 | qwen.qwen3-vl-235b-a22b | 16 | 0 | 16 | 24,363 | 1,057 | 0 | 0.0157 |
 
 ## Overall
 
 - Total model calls: 747
-- Total input tokens: 844,173
-- Total output tokens: 81,585
-- Total tokens: 925,758
-- Average tokens per request: 3,703.0
-- Estimated total cost: USD 0.9293
-- Estimated cost per request: USD 0.003717
+- Total input tokens: 844,953
+- Total output tokens: 81,724
+- Total tokens: 926,677
+- Average tokens per request: 3,706.7
+- Estimated total cost: USD 0.9303
+- Estimated cost per request: USD 0.003721
 
 ## What the calls were for
 

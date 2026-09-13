@@ -25,10 +25,12 @@ class Path:
 
 
 def simulate(rec: Reconstruction, payments: Optional[List[Tuple[dt.date, float]]] = None,
-             adjustments: Optional[Adjustments] = None, debits_before_credits: bool = False) -> Path:
+             adjustments: Optional[Adjustments] = None, debits_before_credits: bool = False,
+             until: Optional[dt.date] = None) -> Path:
     """Day-by-day balance. `payments` are (date, amount) debits for the plan under test.
     `adjustments` replace the per-occurrence amount of an adjustable series."""
-    start, end = rec.request_date, rec.horizon_end
+    start = rec.request_date
+    end = until or rec.horizon_end
     debits: Dict[dt.date, float] = {}
     credits: Dict[dt.date, float] = {}
     for f in rec.flows:

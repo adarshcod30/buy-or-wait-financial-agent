@@ -69,6 +69,7 @@ class Policy:
     budget_method: str = "mean"               # mean | posterior | midrange (see budget.py)
     cadence_mode: str = "mean"                # mean (unbucketed gap, default) | median (bucketed)
     variable_model: str = "discrete"          # discrete (default, measured best) | hybrid (accrue sub-monthly)
+    capacity_horizon: str = "capacity_only"   # capacity_only (default) | full | last_income
     variable_window_days: int = 180
     debits_before_credits: bool = False
     pending_debits_immediate: bool = True
@@ -89,6 +90,20 @@ class Reconstruction:
     @property
     def horizon_end(self) -> dt.date:
         return self.request_date + dt.timedelta(days=FORECAST_DAYS)
+
+    def safety_end(self, mode: str = "full") -> dt.date:
+        """Where the safety check stops.
+
+        The 90-day cut falls at an arbitrary point in the user's pay cycle. When it lands after the
+        last income inside the horizon, the tail is a partial month of pure outflow whose next
+        salary sits just outside the window, so the balance dips at the very end for a reason that
+        is an artefact of where the window was cut rather than a real risk. `last_income` stops at
+        the final projected income date instead, which evaluates whole cycles.
+        """
+        if mode != "last_income":
+            return self.horizon_end
+        incomes = [f.date for f in self.flows if f.amount > 0 and f.date <= self.horizon_end]
+        return max(incomes) if incomes else self.horizon_end
 
 
 # --------------------------------------------------------------------------- helpers
