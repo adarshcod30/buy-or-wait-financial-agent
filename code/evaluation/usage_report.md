@@ -1,12 +1,12 @@
 # Token usage and cost report
 
-Final full-dataset run that produced `output.csv`: started 2026-09-13T10:27:37, 250 requests, mode `agent`, elapsed 49.6 s.
+Final full-dataset run that produced `output.csv`: started 2026-09-13T10:51:26, 250 requests, mode `agent`, elapsed 1.7 s.
 
 Provider: Amazon Bedrock (us-east-1), Converse API, temperature 0. Prices are Bedrock on-demand list prices per 1M tokens as configured in `code/buyorwait/llm/bedrock.py`; cached calls re-use a stored response and are counted with their original token usage so the totals reflect the whole run.
 
 | Model | Calls | Live | Cached | Input tokens | Output tokens | Errors | Est. cost (USD) |
 |---|---|---|---|---|---|---|---|
-| us.amazon.nova-pro-v1:0 | 731 | 20 | 711 | 819,810 | 80,528 | 0 | 0.9135 |
+| us.amazon.nova-pro-v1:0 | 731 | 0 | 731 | 819,810 | 80,528 | 0 | 0.9135 |
 | qwen.qwen3-vl-235b-a22b | 16 | 0 | 16 | 24,363 | 1,057 | 0 | 0.0157 |
 
 ## Overall

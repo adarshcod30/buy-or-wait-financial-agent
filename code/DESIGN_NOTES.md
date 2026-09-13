@@ -428,3 +428,58 @@ actually found. A verification script that cannot fail is not a verification scr
 Requiring exact FX with no fallback: every foreign-currency scheduled row in this dataset already
 resolves to an exact dated rate, and the fallbacks are recorded in the audit rather than silent, so
 removing them would trade a logged approximation for a hard failure with no accuracy gain.
+
+
+## 20. End-to-end audit: reading the whole specification, then auditing against it
+
+A late re-read of `problem_statement.md` found that the first pass had missed a large middle
+section. `evaluation/audit.py` now walks the specification sentence by sentence and asserts every
+stated rule over all 250 rows, then looks for what the rules do not say. It reports 37 checks and
+17 observations, and exits non-zero on any rule failure.
+
+**The sentence that had been missed.** "`earliest_date_for_full_payment` measures financial capacity
+independently of the user's payment-method preferences. It may equal `request_date` even when the
+selected recommendation is installments because the user has chosen not to consider full payment."
+The implementation already computed the field preference-independently, so no change was needed,
+but 14 rows in the output rely on that reading and it is now asserted rather than assumed.
+
+**Three failures the audit surfaced, and what each turned out to be.**
+
+*Two were wrong assertions in the audit itself, which is worth recording.* The first compared a
+partial plan's opening payment to `amount_safe_to_pay` as strings. The organizer's own convention
+differs between the two fields: `amount_safe_to_pay` strips trailing zeros (603.3, 433.4, 462)
+while plan amounts carry two decimals when fractional (620.40, 941.60, 3246.10). Our output follows
+that convention exactly in both fields, verified across all 250 rows, so the check became a numeric
+comparison. The second asserted that `not_affordable` implies an empty earliest date.
+
+*The third is a genuine ambiguity, resolved using the specification's own conflict rule.* Four rows
+reach a state the samples never show: capacity for a single full payment arrives inside the 90-day
+forecast but after `desired_completion_date`. The specification pulls two ways. The eligibility
+list for `wait` does not mention the deadline, but the 90-Day Safety Check says the plan "must
+complete the request by `desired_completion_date`". The tie-break the specification supplies is
+"the financially safer interpretation when the conflict cannot be resolved", and telling someone
+the request is not affordable is safer than telling them to pay after their own deadline. So the
+plan is withheld and the status is `not_affordable`, while the capacity date is still reported,
+because the only stated rule for blanking that field is that the amount never becomes safe within
+the forecast period, which is false here. All seven solved `not_affordable` samples have no capacity
+at all within 90 days, so gold offers no evidence either way; the reasoning is recorded rather than
+the choice being silent.
+
+**What the audit cleared.** Six rows flagged as implausible, all `not_affordable` for users with
+several times the request in headroom, turned out to be gig, freelance and seasonal workers with no
+payroll and therefore no projected income across the full 90 days. The samples confirm the
+organizer projects no irregular income either. Five rows carrying `affordable_with_plan` with an
+empty earliest date, a combination gold never shows, are correct for the same reason sample 6 is:
+the field measures capacity *without* optional spending changes, and in those five the full payment
+only becomes safe after a change. Section 6b now proves that no request silently loses a live
+payroll: all 27 rows with no projected income fall into a named category and none is unexplained.
+
+**Coverage.** The 250 evaluation requests introduce no request type, currency or payment-method
+combination that the 25 solved samples do not already contain, and the corpus has no request
+without payment options, no user missing a profile or history, no duplicate event id, no negative
+amount, no deadline before its request date and no deadline beyond the forecast horizon. The
+predicted distribution tracks the sample distribution within about twelve points on every status
+and method, and matches it exactly on spending-change frequency.
+
+**Explanations.** All 250 match one of the organizer's template shapes, and we emit no shape absent
+from the solved set. Thousands separators and long-form dates follow gold's formatting on every row.
