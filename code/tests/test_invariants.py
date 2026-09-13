@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import datetime as dt
 
-import pytest
-
 from buyorwait.data import PaymentOption, Profile, Request
 from buyorwait.forecast import amount_safe_to_pay, simulate
 from buyorwait.planner import decide

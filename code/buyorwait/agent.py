@@ -6,19 +6,16 @@ change a graded field silently. Every deviation is recorded in the audit trail.
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from .data import Dataset, Request
 from .evidence_types import Fact
-from .explain import check_consistency, render
 from .llm.bedrock import BedrockClient
 from .pipeline import RowResult, decide_request
 from .planner import Plan, fmt_amount
 from .state import Policy
-from .verify import verify_row
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 MAX_TURNS = 6
@@ -60,18 +57,6 @@ class AgentTrace:
 
 def _candidate_id(p: Plan, i: int) -> str:
     return f"{p.method}#{p.option_id or i}"
-
-
-def _candidates_payload(res: RowResult) -> List[dict]:
-    out = []
-    for i, p in enumerate(res.decision.candidates):
-        out.append({
-            "candidate_id": _candidate_id(p, i), "method": p.method, "option_id": p.option_id,
-            "payments": [[d.isoformat(), fmt_amount(a)] for d, a in p.payments],
-            "spending_changes": [c.render() for c in p.changes], "total_paid": p.total_paid,
-            "completes_by_deadline": p.completes_by(res.decision.plan.completes_by if False else res.decision.candidates[0].payments[0][0]) if False else None,
-        })
-    return out
 
 
 def _analysis(ds: Dataset, req: Request, res: RowResult) -> dict:

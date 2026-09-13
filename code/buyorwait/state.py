@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from .config import FORECAST_DAYS
-from .budget import BudgetEstimate, estimate as estimate_budget, measure_widths
+from .budget import estimate as estimate_budget, measure_widths
 from .data import Dataset, Event, Profile
 from .evidence_types import Fact
 from .fx import Converter
@@ -319,7 +319,6 @@ def reconstruct(ds: Dataset, user_id: str, request_date: dt.date, facts: List[Fa
         idx = next((i for i, t in enumerate(series) if abs(t[2] - scheduled_salary.amount) < 0.01), 0)
         desc, first, amount, anchor = series[idx]
         series[idx] = (desc, add_months(scheduled_salary.date, 1), scheduled_salary.amount, anchor)
-    ended = bool(ended_facts) or (not series and bool(salary_hist))
     if ended_facts:
         f = ended_facts[-1]
         if f.amount:
@@ -327,7 +326,6 @@ def reconstruct(ds: Dataset, user_id: str, request_date: dt.date, facts: List[Fa
             keep = to_home(f.amount, f.currency or home, request_date, f.source_id)
             series = [(d, fd, keep, a) for d, fd, _, a in series[:1]]
             applied.append(f"{f.source_id}: income partly ended, remaining salary {keep:.2f}")
-            ended = False
         else:
             applied.append(f"{f.source_id}: income ended, no salary projected")
             series = []

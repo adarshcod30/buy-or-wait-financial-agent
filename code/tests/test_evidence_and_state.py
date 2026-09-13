@@ -4,7 +4,6 @@ import pytest
 
 from buyorwait.data import Message
 from buyorwait.evidence import regex_fact
-from buyorwait.evidence_types import Fact
 from buyorwait.state import cadence_days, is_recurring_income, is_terminal_income, occurrence_budget
 
 

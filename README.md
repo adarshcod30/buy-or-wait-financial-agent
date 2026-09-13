@@ -10,7 +10,7 @@
 [![Runtime deps](https://img.shields.io/badge/runtime%20deps-1%20(boto3)-blue)](requirements.txt)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#license)
 
-[**Repository**](https://github.com/adarshcod30/buy-or-wait-financial-agent) &nbsp;·&nbsp; [**Architecture**](docs/ARCHITECTURE.md) &nbsp;·&nbsp; [**Design notes**](code/DESIGN_NOTES.md) &nbsp;·&nbsp; [**Usage report**](code/evaluation/usage_report.md)
+[**Repository**](https://github.com/adarshcod30/buy-or-wait-financial-agent) &nbsp;·&nbsp; [**Architecture**](docs/ARCHITECTURE.md) &nbsp;·&nbsp; [**Architecture**](docs/ARCHITECTURE.md) &nbsp;·&nbsp; [**Design notes**](code/DESIGN_NOTES.md) &nbsp;·&nbsp; [**Usage report**](code/evaluation/usage_report.md)
 
 *Built for **HackerRank Orchestrate, September 2026**, a 24-hour agentic-AI hackathon. The organizer starter README is kept in [docs/ORGANIZER_STARTER_README.md](docs/ORGANIZER_STARTER_README.md); the challenge text is in [problem_statement.md](problem_statement.md).*
 

@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 mkdir -p submission
 rm -f submission/code.zip
-zip -qr submission/code.zip code \
+zip -qr submission/code.zip code docs/ARCHITECTURE.md \
   -x 'code/__pycache__/*' 'code/*/__pycache__/*' 'code/*/*/__pycache__/*' 'code/.pytest_cache/*' 'code/tests/__pycache__/*'
 cp output.csv submission/output.csv
 cp log.txt submission/log.txt

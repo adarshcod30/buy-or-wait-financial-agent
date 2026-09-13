@@ -127,7 +127,7 @@ def decide_with_uncertainty(ds: Dataset, req: Request, facts: List[Fact],
     if robust:
         # Re-rank the robust candidates with the spec's own ordering, taken from any scenario in
         # which they appeared (the ordering key depends on the plan, not on the forecast).
-        best_cid, best_key, best_res = None, None, None
+        best_cid, best_key = None, None
         for r in results:
             for plan in r.decision.candidates:
                 cid = _cand_id(plan)
@@ -135,7 +135,7 @@ def decide_with_uncertainty(ds: Dataset, req: Request, facts: List[Fact],
                     continue
                 key = plan.sort_key(req.desired_completion_date)
                 if best_key is None or key < best_key:
-                    best_cid, best_key, best_res = cid, key, r
+                    best_cid, best_key = cid, key
         if best_cid is not None:
             backing = [r for r in results if any(_cand_id(p) == best_cid for p in r.decision.candidates)
                        and _cand_id(r.decision.plan) == best_cid if r.decision.plan]

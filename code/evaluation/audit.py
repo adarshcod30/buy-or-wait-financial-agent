@@ -43,12 +43,11 @@ def watch(name, detail):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--verbose", action="store_true")
-    args = ap.parse_args()
+    ap.parse_args()
     ds = load_dataset()
     reqs = {r.request_id: r for r in ds.requests}
     with PATHS.output.open(newline="", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))
-    by = {r["request_id"]: r for r in rows}
 
     print("=" * 110)
     print("SECTION 1 - every rule stated in problem_statement.md, over all 250 rows")

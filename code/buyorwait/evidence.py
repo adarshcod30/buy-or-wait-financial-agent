@@ -13,7 +13,6 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .config import PATHS
 from .data import Dataset, ImageRef, Message
 from .evidence_types import FACT_TYPES, EvidenceBundle, Fact
 from .llm.bedrock import BedrockClient

@@ -1,16 +1,15 @@
 """End-to-end decision for one request: evidence -> reconstruction -> forecast -> plan -> row."""
 from __future__ import annotations
 
-import datetime as dt
 from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
 from .data import Dataset, Request
 from .evidence_types import Fact
 from .explain import check_consistency, render
-from .planner import Decision, Plan, decide, fmt_amount
+from .planner import Decision, decide, fmt_amount
 from .state import Policy, Reconstruction, reconstruct
-from .verify import OUTPUT_COLUMNS, verify_row
+from .verify import verify_row
 
 
 @dataclass

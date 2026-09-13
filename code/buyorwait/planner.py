@@ -13,11 +13,11 @@ from __future__ import annotations
 import datetime as dt
 import itertools
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from .data import PaymentOption, Profile, Request
 from .forecast import Adjustments, amount_safe_to_pay, earliest_full_payment_date, is_safe, simulate
-from .state import AdjustableSeries, Reconstruction
+from .state import Reconstruction
 
 MAX_CHANGES = 3
 
@@ -194,10 +194,11 @@ def schedule_is_usable(opt: PaymentOption, req: Request) -> Tuple[bool, str]:
 
 
 def build_candidates(rec: Reconstruction, req: Request, options: List[PaymentOption], safe: float,
-                     earliest: Optional[dt.date], debits_before_credits: bool = False
+                     earliest: Optional[dt.date], debits_before_credits: bool = False,
+                     plan_end: Optional[dt.date] = None
                      ) -> Tuple[List[Plan], List[str], List[Proof]]:
     profile = rec.profile
-    kw = {"debits_before_credits": debits_before_credits}
+    kw = {"debits_before_credits": debits_before_credits, "until": plan_end or rec.horizon_end}
     cands: List[Plan] = []
     rejected: List[str] = []
     proofs: List[Proof] = []
@@ -300,11 +301,11 @@ def decide(rec: Reconstruction, req: Request, options: List[PaymentOption],
     # full 90 days. Both are measured; see evaluation/policy_experiments.md.
     cap_end = rec.safety_end(capacity_horizon if capacity_horizon != "capacity_only" else "last_income")
     plan_end = rec.horizon_end if capacity_horizon in ("full", "capacity_only") else cap_end
-    kw = {"debits_before_credits": debits_before_credits, "until": plan_end}
     cap_kw = {"debits_before_credits": debits_before_credits, "until": cap_end}
     safe, path = amount_safe_to_pay(rec, req.requested_amount, **cap_kw)
     earliest = earliest_full_payment_date(rec, req.requested_amount, **cap_kw)
-    cands, rejected, proofs = build_candidates(rec, req, options, safe, earliest, debits_before_credits)
+    cands, rejected, proofs = build_candidates(rec, req, options, safe, earliest, debits_before_credits,
+                                               plan_end)
     if not cands:
         return Decision(safe, earliest, "not_affordable", "not_recommended", None, cands, rejected,
                         path.trough, path.trough_date, proofs)

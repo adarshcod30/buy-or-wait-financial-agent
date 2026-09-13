@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import datetime as dt
 import re
-from typing import List, Optional
+from typing import List
 
 from .data import Profile, Request
-from .planner import Decision, Plan, fmt_amount
+from .planner import Decision, Plan
 
 
 def money(cur: str, x: float) -> str:

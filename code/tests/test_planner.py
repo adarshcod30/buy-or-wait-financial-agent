@@ -1,7 +1,7 @@
 import datetime as dt
 
 from buyorwait.data import PaymentOption, Profile, Request
-from buyorwait.planner import Plan, decide, fmt_amount
+from buyorwait.planner import decide, fmt_amount
 from buyorwait.state import AdjustableSeries, Flow, Reconstruction
 
 

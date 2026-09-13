@@ -1,6 +1,6 @@
 # Token usage and cost report
 
-Final full-dataset run that produced `output.csv`: started 2026-09-13T12:22:40, 250 requests, mode `agent`, elapsed 1.9 s.
+Final full-dataset run that produced `output.csv`: started 2026-09-13T13:13:35, 250 requests, mode `agent`, elapsed 1.8 s.
 
 Provider: Amazon Bedrock (us-east-1), Converse API, temperature 0. Prices are Bedrock on-demand list prices per 1M tokens as configured in `code/buyorwait/llm/bedrock.py`; cached calls re-use a stored response and are counted with their original token usage so the totals reflect the whole run.
 

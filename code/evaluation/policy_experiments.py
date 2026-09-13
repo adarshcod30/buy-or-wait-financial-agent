@@ -50,7 +50,6 @@ def main() -> int:
     fp = PATHS.cache / "facts.json"
     facts = load_facts_file(fp) if fp.is_file() else {}
     ids = [s.request.request_id for s in ds.samples]
-    gold = {s.request.request_id: s for s in ds.samples}
 
     configs = list(itertools.product(*AXES.values()))
     scores: dict = {}
