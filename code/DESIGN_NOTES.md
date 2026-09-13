@@ -538,3 +538,62 @@ we sometimes under-project, which is the timing problem of section 18 rather tha
 classified: eight are downstream of a categorical difference and two differ only in a number inside
 otherwise identical sentences. Zero are wording defects. The renderer is correct; that field moves
 only when the forecast does.
+
+
+## 22. The occurrence-placement rule: a definitive negative result
+
+This is the last unresolved question and the largest remaining source of amount error, so it was
+pursued to the point where the answer is provable rather than merely unfound.
+
+**What is established.** Cadences are exact: every variable series in the corpus fires on a
+perfectly regular grid of 7, 10, 14 or 21 days, or calendar-monthly, with no jitter. Budgets are
+integers on a per-currency grid. The trough sits at the last debit before the next income for 20 of
+the 21 trough-pinning samples; the exception, request_13, is the one user with negative monthly cash
+flow, whose trough is correctly at month three. With cadences exact and an anchor fixed, a placement
+rule is fully described by four discrete choices, so the space is finite and was enumerated.
+
+**The search.** 96 rules were scored: anchor in {last occurrence, request date, first occurrence} x
+counting formula in {step from anchor, floor(D/c), round(D/c), ceil(D/c)} x include-start x
+include-end x window-end offset. Each rule was scored by how many gold troughs it makes exactly
+solvable in integer budgets.
+
+| Rule | Exactly solvable |
+|---|---|
+| Best found: anchor=last, formula=round(D/c) | 8 of 21 |
+| Shipped: anchor=last, step from anchor | 6 of 21 |
+| Chance baseline (measured, see below) | 0.7 of 21 |
+
+**Is "solvable" even a signal?** Yes, and it was measured rather than assumed. Enumerating every
+count vector from 0 to 3 per series across the samples, only **266 of 7,791 arbitrary vectors, 3.4%,
+admit an exact integer solution**. So a rule scoring 6 or 8 out of 21 is roughly ten times chance
+and carries real information. But a *correct* rule would score near 21. It does not, which places
+the true rule outside the enumerated space.
+
+**Why one more equation would not settle it either.** Each trough-pinning sample supplies exactly
+one equation against three to five unknown integer budgets plus three to five unknown counts. Even
+with the integer grid and the feasible intervals, one equation cannot identify eight to ten
+unknowns; feasibility can only ever falsify a rule, never confirm one. Five samples admit zero
+feasible count vectors at all, which localises their error to the budget intervals or the fixed
+component rather than to placement, and further weakens the discriminating power of the metric.
+
+**What it would be worth.** Less than the effort suggests, because the remaining wrong rows are not
+all knife-edge amount cases. Of the six samples whose status, method or plan is wrong:
+
+| Sample | Trough error | Distance of gold's safe amount from the request | What is actually wrong |
+|---|---|---|---|
+| request_06 | 3.74% | 2.8% | genuine knife edge |
+| request_21 | 3.83% | 2.0% | genuine knife edge |
+| request_08 | 0.23% | 71% | month 2-3 drift, not month 1 |
+| request_13 | 3.31% | 54% | month 2-3 drift |
+| request_19 | 0.79% | 27% | partial-payment split |
+| request_09 | 17.72% | 0% | freelancer, no projected income |
+
+Only two are the knife-edge case a perfect placement rule would fix. Two more turn on multi-month
+drift: our month-one trough is accurate to a quarter of a percent for request_08, yet the capacity
+date over months two and three is wrong, which is a different error mode entirely.
+
+**Conclusion.** The placement rule is not recoverable from this evidence, and the reason is
+structural rather than a failure of search: the sample set supplies 21 equations against roughly
+200 unknowns, and the one metric available can falsify but not confirm. The forecast is already
+accurate to 1.64% median trough error with 14 of 21 samples inside 3%, so the practical headroom
+is bounded. This is recorded as an open limitation with its evidence, not as an unexplored corner.
