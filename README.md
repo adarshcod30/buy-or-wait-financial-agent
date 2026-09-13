@@ -6,7 +6,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Nova%20Pro%20%7C%20Qwen3--VL-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/bedrock/)
-[![Tests](https://img.shields.io/badge/tests-24%20passing-2ea44f)](tests/)
+[![Tests](https://img.shields.io/badge/tests-43%20passing-2ea44f)](tests/)
 [![Runtime deps](https://img.shields.io/badge/runtime%20deps-1%20(boto3)-blue)](requirements.txt)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#license)
 
@@ -72,7 +72,8 @@ from a message, or a branch in the code. The model is used where the data is uns
 | Plan search with preferences | Full, partial (two payments), each seller installment option, wait, and spending-change variants, filtered by the user's accepted methods and installment horizon |
 | Smallest-disruption spending changes | Up to three stop/reduce actions on permitted flexible series, chosen by minimal monthly saving, never on a protected category |
 | Agent loop with an arbiter | The model drives `analyze_request`, `inspect_flows`, `submit_decision`; the deterministic ranking is re-applied so a model choice cannot alter a graded field silently |
-| Contract verifier | Every rendered row is re-checked against the submission contract (bounds, plan sums, option match, partial rules, change permissions) before it is written |
+| Contract verifier with self-repair | Every rendered row is re-checked against the submission contract before it is written; if the top-ranked plan fails, the next-ranked safe plan is emitted instead of an invalid row |
+| Per-candidate proof trace | Every candidate records whether its counterfactual forecast held, its lowest projected balance and the first date it breached; 335 proofs across the 250 requests |
 | Grounded explanations | Six templates derived from the solved samples, filled from the decision object, with a numeric consistency check |
 | Runs without a key | `--mode deterministic` produces a valid `output.csv` from cached or regex evidence when the provider is unavailable |
 | Measured usage report | Every model call is recorded (tokens, latency, cache hit); `evaluation/usage_report.md` is generated from the final run |
@@ -369,6 +370,10 @@ spending_changes_needed, decision_explanation`.
 - `code/tests/test_evidence_and_state.py`: regex facts in English and Indonesian, scam and
   pending messages have no cash effect, income classification, cadence, budget ratios, and the
   full contract on all 25 samples.
+- `code/tests/test_invariants.py`: 19 metamorphic and property tests that must hold for every
+  input, not just the samples. Monotonicity of safe capacity under perturbation, plan-shape
+  invariants, spending-change permissions, and the guarantee that every returned plan is safe
+  under its own counterfactual forecast.
 
 ## Safety and Edge Cases
 

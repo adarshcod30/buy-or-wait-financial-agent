@@ -298,3 +298,59 @@ what the challenge's own conflict rule prescribes: an explicit settlement first,
 financially safer interpretation. The rule is deliberately narrow, firing only when a second
 reader and the pattern rules agree that money has already arrived while the primary model would
 schedule it in the future. It fires once on this corpus.
+
+
+## 17. Proof traces, self-repair, and property-based tests
+
+Three additions from a review of the architecture against an idealised "financial compiler" design.
+Most of that design was already present, so this section records only what was genuinely missing,
+and two of its recommendations that the data contradicts.
+
+**Per-candidate proof.** `planner.Proof` records, for every candidate plan considered and not only
+the winner, whether its counterfactual forecast held the minimum balance, the lowest projected
+balance it reached, and the first date it breached. The run writes these to `runs/audit.jsonl`:
+335 candidate proofs across the 250 requests, and every one of the 119 rejected candidates carries
+a dated failure point. This turns "the plan was not safe" into "full payment today bottoms out at
+730.41 on 13 January against an 800 minimum", which is what makes a rejection reviewable.
+
+**Self-repair.** `pipeline.decide_request` now walks the ranked candidates and emits the first one
+that passes contract verification, rather than emitting the top-ranked row with its problems
+attached. A formatting defect scores zero on that row, whereas the second-best safe plan is still
+a legitimate recommendation. It has never fired on this dataset (0 of 250), which is the desired
+result: it is insurance against a hidden-set combination the samples do not contain.
+
+**Property-based tests.** `tests/test_invariants.py` adds 19 metamorphic tests to the 24 example
+tests. Matching 25 published samples proves the system is right at 25 points in the input space;
+these assert properties that must hold everywhere, by perturbing a scenario and checking the
+direction the answer is allowed to move. Increasing an expense cannot increase safe capacity;
+removing a debit cannot decrease it; raising the minimum balance cannot increase it; adding income
+cannot decrease it. Plus shape invariants (a partial plan is exactly two payments summing to the
+request, an installment plan totals its option including financing fees, `not_recommended` implies
+no plan), permission invariants (protected categories, unpermitted categories and fixed series are
+never modified, `reduce_to` never goes below `minimum_allowed_amount`, stop and reduce never target
+the same series, at most three changes), and the guarantee that every plan the planner returns is
+genuinely safe under its own counterfactual forecast.
+
+**Two recommendations rejected on evidence.**
+
+*A Pareto frontier before applying the ranking.* The challenge's ranking is a lexicographic tuple
+over six keys, which is a total order. Sorting by it already yields the unique optimum, so a
+non-dominated frontier would be an extra step with no effect on the result.
+
+*Solving for "the minimum reduction required" rather than reducing to `minimum_allowed_amount`.*
+The samples contradict this. Both spending reductions in the solved set, `reduce_to:event_989:665950`
+and `reduce_to:event_1816:23.50`, are exactly the event's `minimum_allowed_amount`. Computing a
+smaller sufficient reduction would produce a number the organizer never emits.
+
+Two further points from that review were checked and found already handled: installment options
+can cost more than the requested amount because of financing fees, and ranking already uses the
+option's total payable, so sample 2's plan is priced at 47,858,720.01 against a 46,018,000 request.
+And `earliest_date_for_full_payment` is computed without optional spending changes, which is why
+sample 6 correctly reports 15 January while the recommendation is to pay today after a cut.
+
+**On Decimal versus float.** Money is held as `float` with a half-cent comparison epsilon. The
+concern is legitimate in general; here it was measured rather than assumed. No value in the
+250-row output carries more than two decimals, and the residual analysis in section 15 recovers
+exact integers from sums of hundreds of projected flows, which would not happen if float drift
+were material at this scale. A `Decimal` refactor was therefore not made: it would touch every
+module for no measurable change in output.

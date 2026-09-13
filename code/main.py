@@ -105,7 +105,8 @@ def cmd_run(args) -> int:
                    "trough": round(res.decision.trough, 2), "trough_date": res.decision.trough_date.isoformat(),
                    "candidates": [{"method": p.method, "option_id": p.option_id, "changes": [c.render() for c in p.changes]}
                                   for p in res.decision.candidates],
-                   "rejected": res.decision.rejected}
+                   "rejected": res.decision.rejected,
+                   "proof": [pf.as_dict() for pf in res.decision.proofs]}
             if ens is not None:
                 rec["forecast_confidence"] = round(ens.agreement, 3)
                 rec["amount_spread"] = [round(x, 2) for x in ens.amount_spread]

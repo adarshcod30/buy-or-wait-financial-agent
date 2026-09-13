@@ -38,6 +38,24 @@ class Change:
 
 
 @dataclass
+class Proof:
+    """Why a candidate plan passed or failed, kept for the audit trail and the interview."""
+    label: str
+    valid: bool
+    reason: str = ""
+    lowest_balance: Optional[float] = None
+    first_failure_date: Optional[dt.date] = None
+    required_minimum: Optional[float] = None
+    changes: List[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict:
+        return {"plan": self.label, "valid": self.valid, "reason": self.reason,
+                "lowest_projected_balance": None if self.lowest_balance is None else round(self.lowest_balance, 2),
+                "first_failure_date": self.first_failure_date.isoformat() if self.first_failure_date else None,
+                "required_minimum": self.required_minimum, "spending_changes": self.changes}
+
+
+@dataclass
 class Plan:
     method: str                                  # full_payment | partial_payment | installments | wait
     payments: List[Tuple[dt.date, float]]
@@ -83,6 +101,7 @@ class Decision:
     rejected: List[str]
     trough: float
     trough_date: dt.date
+    proofs: List[Proof] = field(default_factory=list)
 
 
 def fmt_amount(x: float) -> str:
@@ -162,21 +181,40 @@ def installment_eligible(opt: PaymentOption, profile: Profile) -> Tuple[bool, st
 
 
 def build_candidates(rec: Reconstruction, req: Request, options: List[PaymentOption], safe: float,
-                     earliest: Optional[dt.date], debits_before_credits: bool = False) -> Tuple[List[Plan], List[str]]:
+                     earliest: Optional[dt.date], debits_before_credits: bool = False
+                     ) -> Tuple[List[Plan], List[str], List[Proof]]:
     profile = rec.profile
     kw = {"debits_before_credits": debits_before_credits}
     cands: List[Plan] = []
     rejected: List[str] = []
+    proofs: List[Proof] = []
+    minimum = profile.minimum_balance_to_keep
     rd, amt = req.request_date, req.requested_amount
+
+    def prove(label: str, payments, changes: Optional[List[Change]] = None) -> Proof:
+        """Run the counterfactual forecast for one candidate and record where it fails."""
+        path = simulate(rec, payments, adjustments_for(changes or []), **kw)
+        ok = path.trough >= minimum - 0.005
+        fail = None
+        if not ok:
+            for d, b in zip(path.dates, path.balances):
+                if b < minimum - 0.005:
+                    fail = d
+                    break
+        return Proof(label, ok, "" if ok else "projected balance falls below the minimum",
+                     path.trough, fail, minimum, [c.render() for c in (changes or [])])
 
     # full payment today
     full_pay = [(rd, amt)]
     if "full_payment" in profile.payment_methods:
-        if is_safe(rec, full_pay, **kw):
+        pr = prove("full_payment today", full_pay)
+        proofs.append(pr)
+        if pr.valid:
             cands.append(Plan("full_payment", full_pay, reason="full amount safe today"))
         else:
             ch = find_change_set(rec, profile, full_pay, **kw)
             if ch:
+                proofs.append(prove("full_payment today + spending changes", full_pay, ch))
                 cands.append(Plan("full_payment", full_pay, ch, reason="full amount safe today after spending changes"))
             else:
                 rejected.append("full_payment today: balance would fall below the minimum and no permitted spending change fixes it")
@@ -191,12 +229,14 @@ def build_candidates(rec: Reconstruction, req: Request, options: List[PaymentOpt
                 rejected.append(f"{opt.payment_option_id}: {why}")
             continue
         sched = [(max(d, rd), a) for d, a in opt.schedule()]
+        proofs.append(prove(f"installments {opt.payment_option_id}", sched))
         if is_safe(rec, sched, **kw):
             cands.append(Plan("installments", sched, option_id=opt.payment_option_id, option_number=opt.option_number,
                               reason=f"{opt.payment_option_id} keeps the minimum"))
         else:
             ch = find_change_set(rec, profile, sched, **kw)
             if ch:
+                proofs.append(prove(f"installments {opt.payment_option_id} + spending changes", sched, ch))
                 cands.append(Plan("installments", sched, ch, opt.payment_option_id, opt.option_number,
                                   reason=f"{opt.payment_option_id} safe after spending changes"))
             else:
@@ -205,18 +245,20 @@ def build_candidates(rec: Reconstruction, req: Request, options: List[PaymentOpt
     # partial payment: exactly two payments, remainder on the earliest full-payment date
     if req.allows_partial_payment and "partial_payment" in profile.payment_methods:
         if 0 < safe < amt and earliest and earliest <= req.desired_completion_date and earliest > rd:
-            cands.append(Plan("partial_payment", [(rd, safe), (earliest, round(amt - safe, 2))],
-                              reason="safe part today, remainder on the earliest full-payment date"))
+            pp = [(rd, safe), (earliest, round(amt - safe, 2))]
+            proofs.append(prove("partial_payment", pp))
+            cands.append(Plan("partial_payment", pp, reason="safe part today, remainder on the earliest full-payment date"))
         else:
             rejected.append("partial_payment: conditions not met (0 < safe < requested and earliest date within the deadline)")
 
     # wait for the earliest full-payment date
     if "full_payment" in profile.payment_methods and earliest and earliest > rd:
+        proofs.append(prove("wait for the earliest safe date", [(earliest, amt)]))
         cands.append(Plan("wait", [(earliest, amt)], reason="full amount becomes safe later"))
     elif "full_payment" in profile.payment_methods and earliest is None:
         rejected.append("wait: the full amount is never safe within the 90-day forecast")
 
-    return cands, rejected
+    return cands, rejected, proofs
 
 
 def decide(rec: Reconstruction, req: Request, options: List[PaymentOption],
@@ -224,10 +266,10 @@ def decide(rec: Reconstruction, req: Request, options: List[PaymentOption],
     kw = {"debits_before_credits": debits_before_credits}
     safe, path = amount_safe_to_pay(rec, req.requested_amount, **kw)
     earliest = earliest_full_payment_date(rec, req.requested_amount, **kw)
-    cands, rejected = build_candidates(rec, req, options, safe, earliest, debits_before_credits)
+    cands, rejected, proofs = build_candidates(rec, req, options, safe, earliest, debits_before_credits)
     if not cands:
         return Decision(safe, earliest, "not_affordable", "not_recommended", None, cands, rejected,
-                        path.trough, path.trough_date)
+                        path.trough, path.trough_date, proofs)
     cands.sort(key=lambda p: p.sort_key(req.desired_completion_date))
     best = cands[0]
     if best.method == "full_payment" and not best.changes:
@@ -236,4 +278,4 @@ def decide(rec: Reconstruction, req: Request, options: List[PaymentOption],
         status = "affordable_later"
     else:
         status = "affordable_with_plan"
-    return Decision(safe, earliest, status, best.method, best, cands, rejected, path.trough, path.trough_date)
+    return Decision(safe, earliest, status, best.method, best, cands, rejected, path.trough, path.trough_date, proofs)
