@@ -483,3 +483,58 @@ and method, and matches it exactly on spending-change frequency.
 
 **Explanations.** All 250 match one of the organizer's template shapes, and we emit no shape absent
 from the solved set. Thousands separators and long-form dates follow gold's formatting on every row.
+
+
+## 21. Exhaustive policy search, and why the shipped configuration stands
+
+The forecast contains four modelling choices the specification does not settle: how variable spend
+is projected, how the per-occurrence budget is recovered, how cadence is measured, and how same-day
+debits and credits are ordered. Rather than argue them, all 24 combinations were scored on the
+solved samples and the selection was cross-validated. `evaluation/policy_experiments.py` reproduces
+the table; `evaluation/policy_experiments.md` is its output.
+
+**Six variable-spend models were built and measured** against the 21 trough-pinning samples, where
+the gold trough is pinned exactly: discrete occurrences (shipped), daily accrual at the cadence
+rate, daily accrual from a 90-day window, daily accrual from a 30-day window, a monthly block
+charged on the anniversary, and a hybrid that keeps monthly series discrete while accruing
+sub-monthly ones. The hybrid was motivated by a real observation: a monthly series fires on a known
+calendar day so its timing is certain, while a weekly series' timing is not, and one mis-placed
+occurrence moves the trough by a whole budget.
+
+**A scratch harness said the hybrid won; the production pipeline said otherwise, and the pipeline
+was right.** The harness had used the posterior budget estimator while production defaults to the
+mean, so the two were not comparing the same thing. Re-run inside the real pipeline across the full
+grid, `discrete` with the mean budget and the unbucketed mean cadence is the argmax on categorical
+accuracy. The hybrid is retained as a tested option (`Policy.variable_model`) because it is a
+legitimate alternative and its measurement is part of the record, but it is not the default. The
+episode is recorded because the lesson generalises: a scratch harness that diverges from the
+production path will mislead, and the production measurement is the one that counts.
+
+**Leave-one-out cross-validation.** Choosing one of 24 configurations on 25 samples risks selecting
+for those rows. For each held-out sample the winner was re-chosen using only the other 24:
+
+| | categorical hits /150 | amount within 5% /25 |
+|---|---|---|
+| Shipped configuration, in-sample | 115 | 12 |
+| Leave-one-out selection | 111 | 11 |
+
+Selection optimism is 4 hits out of 150, about 2.7%, and **23 of the 25 folds independently choose
+the shipped configuration**. The choice is stable rather than an artefact.
+
+**The one genuine trade-off.** Clearing a day's debits before its credits cuts median amount error
+from 6.43% to 3.91% and gains one row within five percent, but costs four categorical hits (method,
+spending changes and explanation). Five of the six graded dimensions are categorical and scored
+exactly while the amount is a magnitude, so the categorical ranking wins. The alternative stays
+available behind `--debits-first` and the reasoning is on the record rather than buried in a default.
+
+**A global bias correction was tested and rejected.** If our variable-spend estimate were biased by
+a constant factor, a single calibrated multiplier would fix it. Measured, the ratio of gold's
+variable spend to ours has median 1.03 and standard deviation 0.26, with only 10 of 21 samples
+within ten percent of the median. There is no consistent bias to correct. The ratio does correlate
+negatively with window length (r = -0.49): over 90-day horizons we over-project, over short windows
+we sometimes under-project, which is the timing problem of section 18 rather than a scale problem.
+
+**The explanation field is not independently improvable.** All ten explanation mismatches were
+classified: eight are downstream of a categorical difference and two differ only in a number inside
+otherwise identical sentences. Zero are wording defects. The renderer is correct; that field moves
+only when the forecast does.

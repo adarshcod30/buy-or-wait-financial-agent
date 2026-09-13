@@ -34,7 +34,9 @@ def simulate(rec: Reconstruction, payments: Optional[List[Tuple[dt.date, float]]
     for f in rec.flows:
         amt = f.amount
         if adjustments and f.series_key in adjustments and amt < 0:
-            amt = -adjustments[f.series_key]
+            # Adjustments are expressed per occurrence; an accrued flow carries the scale that
+            # converts a per-occurrence amount into its daily share.
+            amt = -adjustments[f.series_key] * f.scale
         tgt = credits if amt > 0 else debits
         tgt[f.date] = tgt.get(f.date, 0.0) + amt
     for d, a in payments or []:
