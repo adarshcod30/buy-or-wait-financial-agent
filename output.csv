@@ -51,7 +51,7 @@ request_74,5010,affordable_now,full_payment,2025-08-04:5010,2025-08-04,none,"Pay
 request_75,14019.5,not_affordable,not_recommended,none,,none,"Do not make this payment by 12 June 2026. None of the available options keeps the ZAR 39,000 minimum protected."
 request_76,286.01,not_affordable,not_recommended,none,,none,"Do not make this payment by 30 July 2024. None of the available options keeps the USD 1,800 minimum protected."
 request_77,60700,affordable_now,full_payment,2025-11-05:60700,2025-11-05,none,"Pay INR 60,700 today. This leaves at least INR 82,200 available over the next 90 days."
-request_78,44705.15,affordable_later,wait,2025-10-15:50200,2025-10-15,none,"Pay INR 50,200 in full on 15 October 2025. Paying earlier would take the balance below the INR 55,200 minimum."
+request_78,44705.15,not_affordable,not_recommended,none,2025-10-15,none,"Do not make this payment by 14 October 2025. None of the available options keeps the INR 55,200 minimum protected."
 request_79,269.71,not_affordable,not_recommended,none,,none,"Do not proceed with the EUR 2,151.60 request. Although EUR 313.14 is available today, the full amount cannot be completed safely within 90 days."
 request_80,0,not_affordable,not_recommended,none,,none,"Do not make this payment by 21 February 2025. None of the available options keeps the INR 121,300 minimum protected."
 request_81,2076,affordable_now,full_payment,2026-07-03:2076,2026-07-03,none,"Pay USD 2,076 today. This leaves at least USD 1,600 available over the next 90 days."
@@ -87,7 +87,7 @@ request_110,22352,affordable_with_plan,installments,2025-08-06:7748.69|2025-09-0
 request_111,16625000,affordable_now,full_payment,2026-04-03:16625000,2026-04-03,none,"Pay IDR 16,625,000 today. This leaves at least IDR 23,022,800 available over the next 90 days."
 request_112,271.7,affordable_now,full_payment,2024-06-05:271.70,2024-06-05,none,Pay EUR 271.70 today. This leaves at least EUR 500 available over the next 90 days.
 request_113,26780.01,affordable_later,wait,2026-09-15:36500,2026-09-15,none,"Wait until 15 September 2026, then pay INR 36,500 in full. Paying sooner would put the INR 82,300 minimum at risk."
-request_114,57079.14,affordable_later,wait,2026-01-15:65300,2026-01-15,none,"Pay INR 65,300 in full on 15 January 2026. Paying earlier would take the balance below the INR 113,400 minimum."
+request_114,57079.14,not_affordable,not_recommended,none,2026-01-15,none,"Do not make this payment by 14 January 2026. None of the available options keeps the INR 113,400 minimum protected."
 request_115,14512.93,affordable_later,wait,2024-11-15:80500,2024-11-15,none,"Pay INR 80,500 in full on 15 November 2024. Paying earlier would take the balance below the INR 38,800 minimum."
 request_116,7741.77,not_affordable,not_recommended,none,,none,"Do not make this payment by 16 April 2025. None of the available options keeps the INR 80,300 minimum protected."
 request_117,858.45,affordable_with_plan,full_payment,2026-07-05:880,2026-07-15,reduce_to:event_10833:11|reduce_to:event_10878:20.50,"Reduce the family streaming plan to EUR 11 and reduce the weekend food delivery to EUR 20.50, then pay EUR 880 today. This leaves at least EUR 1,000 available."

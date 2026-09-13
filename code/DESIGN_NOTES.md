@@ -354,3 +354,77 @@ concern is legitimate in general; here it was measured rather than assumed. No v
 exact integers from sums of hundreds of projected flows, which would not happen if float drift
 were material at this scale. A `Decimal` refactor was therefore not made: it would touch every
 module for no measurable change in output.
+
+
+## 18. Cracking the occurrence-placement rule: what was proved and what resisted
+
+The remaining amount error traces to how many occurrences of each recurring series fall before the
+trough. Reading the raw date sequences settled the first half of the question immediately:
+**cadences are exact**. Every variable series in the corpus fires on a perfectly regular grid, with
+gaps of exactly 7, 10, 14 or 21 days, or calendar-monthly. There is no jitter to model.
+
+That found a real defect. The bucketed-median classifier mapped a genuine 5-day cadence into the
+`5 <= med <= 8 -> 7` bucket, silently under-projecting a third of that user's transport spend. The
+unbucketed mean gap (section 15) fixes it, which is the mechanism behind that measured improvement.
+
+With exact cadences and a fixed anchor, the count inside a window depends only on the window
+boundaries, so the rule space is tiny rather than open-ended. All of it was searched, scored by how
+many gold troughs become exactly solvable in integer budgets:
+
+| Window start | Window end | Exactly solvable |
+|---|---|---|
+| request date | day before first income | 5 of 21 |
+| request date | first income day | 7 of 21 |
+| request date + 1 | day before first income | 4 of 21 |
+| request date + 1 | first income day | 4 of 21 |
+
+Seven of 21 is the ceiling for any pure window rule, so the placement rule is not a window rule.
+Exhaustive enumeration of feasible count vectors for individual samples shows why it resists: for
+request_06 the residual is 235.00 and the minimum possible sum of its projected series is 273.78,
+so gold must be projecting strictly fewer occurrences than the observed cadence implies, and the
+enumeration admits several count vectors that would explain it with no way to choose between them
+from one sample. Solving request_06, request_15 and request_18 jointly did not isolate a common
+delta either.
+
+**Status: unresolved, and recorded as such.** The structure is proved (exact cadences, integer
+budgets, trough at the last debit before the next income) and the search space for a window rule is
+exhausted. What remains is a placement rule that drops some occurrences the observed cadence
+predicts, and neither hypothesis testing nor per-sample inversion identified it. It is the single
+largest remaining source of amount error and the honest limit of this submission.
+
+## 19. Four contract defects found by adversarial review
+
+A structured review of the planner against the specification surfaced four issues. Three were real
+and are fixed; one did not occur in this dataset but is now guarded.
+
+**A partial plan was recommended without being simulated.** The two-payment schedule was built from
+baseline capacity and the baseline earliest date, and its safety proof was computed but not used to
+gate the candidate. The first payment lowers the balance the second draws on, so the pair has to be
+forecast jointly. `build_candidates` now gates on the proof, and falls back to a spending-change
+variant before rejecting. `test_a_partial_plan_is_only_offered_when_both_payments_are_jointly_safe`
+pins it.
+
+**A plan could finish after the deadline.** The ranking placed `completes_by_deadline` first, so a
+late plan only won when nothing else completed, but "only when nothing else qualifies" is not the
+same as ineligible. No solved sample ever recommends a plan finishing after the deadline, and two
+of the 250 rows carried a `wait` plan one day past it. Missing the deadline is now a hard
+ineligibility for both wait and installment candidates, and the output has zero such rows. Note
+this applies to the *plan*, not to `earliest_date_for_full_payment`, which legitimately may fall
+after the deadline: sample 6 reports 15 January against a 14 January deadline while recommending
+payment today after a cut.
+
+**A supplied installment schedule could be edited.** The code clamped each payment date with
+`max(date, request_date)`. A recommended installment plan must follow a supplied option exactly, so
+an option whose first payment already fell before the evaluation date is ineligible, not editable.
+No option in this dataset starts before its request date, so this changed no output, but the clamp
+was a silent correctness hazard and is gone.
+
+**The requirements checker asserted a claim it never tested.** The FR9 line reported "16 images, 16
+facts" as an unconditional pass. It now enumerates every blank event amount, confirms each has a
+resolved fact with a positive amount, a currency and a provenance string, and reports the counts it
+actually found. A verification script that cannot fail is not a verification script.
+
+**Rejected from the same review.** A `Decimal` refactor: measured in section 17 as unnecessary here.
+Requiring exact FX with no fallback: every foreign-currency scheduled row in this dataset already
+resolves to an exact dated rate, and the fallbacks are recorded in the audit rather than silent, so
+removing them would trade a logged approximation for a hard failure with no accuracy gain.

@@ -6,7 +6,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Bedrock](https://img.shields.io/badge/Amazon%20Bedrock-Nova%20Pro%20%7C%20Qwen3--VL-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/bedrock/)
-[![Tests](https://img.shields.io/badge/tests-43%20passing-2ea44f)](tests/)
+[![Tests](https://img.shields.io/badge/tests-47%20passing-2ea44f)](tests/)
 [![Runtime deps](https://img.shields.io/badge/runtime%20deps-1%20(boto3)-blue)](requirements.txt)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#license)
 
@@ -370,7 +370,7 @@ spending_changes_needed, decision_explanation`.
 - `code/tests/test_evidence_and_state.py`: regex facts in English and Indonesian, scam and
   pending messages have no cash effect, income classification, cadence, budget ratios, and the
   full contract on all 25 samples.
-- `code/tests/test_invariants.py`: 19 metamorphic and property tests that must hold for every
+- `code/tests/test_invariants.py`: 23 metamorphic and property tests that must hold for every
   input, not just the samples. Monotonicity of safe capacity under perturbation, plan-shape
   invariants, spending-change permissions, and the guarantee that every returned plan is safe
   under its own counterfactual forecast.

@@ -180,6 +180,19 @@ def installment_eligible(opt: PaymentOption, profile: Profile) -> Tuple[bool, st
     return True, ""
 
 
+def schedule_is_usable(opt: PaymentOption, req: Request) -> Tuple[bool, str]:
+    """A recommended installment plan must follow a supplied option exactly. An option whose
+    first payment already fell before the evaluation date cannot be followed, so it is
+    ineligible rather than editable. A schedule finishing after the deadline cannot complete
+    the request in time."""
+    if opt.first_payment_date < req.request_date:
+        return False, f"schedule starts {opt.first_payment_date}, before the request date"
+    last = max(d for d, _ in opt.schedule())
+    if last > req.desired_completion_date:
+        return False, f"schedule finishes {last}, after the deadline {req.desired_completion_date}"
+    return True, ""
+
+
 def build_candidates(rec: Reconstruction, req: Request, options: List[PaymentOption], safe: float,
                      earliest: Optional[dt.date], debits_before_credits: bool = False
                      ) -> Tuple[List[Plan], List[str], List[Proof]]:
@@ -224,11 +237,13 @@ def build_candidates(rec: Reconstruction, req: Request, options: List[PaymentOpt
     # installments
     for opt in sorted(options, key=lambda o: o.option_number):
         ok, why = installment_eligible(opt, profile)
+        if ok:
+            ok, why = schedule_is_usable(opt, req)
         if not ok:
             if opt.payment_method == "installments":
                 rejected.append(f"{opt.payment_option_id}: {why}")
             continue
-        sched = [(max(d, rd), a) for d, a in opt.schedule()]
+        sched = list(opt.schedule())          # exactly as supplied, never shifted
         proofs.append(prove(f"installments {opt.payment_option_id}", sched))
         if is_safe(rec, sched, **kw):
             cands.append(Plan("installments", sched, option_id=opt.payment_option_id, option_number=opt.option_number,
@@ -246,15 +261,32 @@ def build_candidates(rec: Reconstruction, req: Request, options: List[PaymentOpt
     if req.allows_partial_payment and "partial_payment" in profile.payment_methods:
         if 0 < safe < amt and earliest and earliest <= req.desired_completion_date and earliest > rd:
             pp = [(rd, safe), (earliest, round(amt - safe, 2))]
-            proofs.append(prove("partial_payment", pp))
-            cands.append(Plan("partial_payment", pp, reason="safe part today, remainder on the earliest full-payment date"))
+            pr = prove("partial_payment", pp)
+            proofs.append(pr)
+            if pr.valid:
+                cands.append(Plan("partial_payment", pp, reason="safe part today, remainder on the earliest full-payment date"))
+            else:
+                # The first payment lowers the balance the second one draws on, so the pair has to
+                # be simulated jointly. Baseline capacity and the baseline earliest date do not
+                # prove the schedule; only the counterfactual forecast does.
+                ch = find_change_set(rec, profile, pp, **kw)
+                if ch:
+                    proofs.append(prove("partial_payment + spending changes", pp, ch))
+                    cands.append(Plan("partial_payment", pp, ch, reason="two payments safe after spending changes"))
+                else:
+                    rejected.append(f"partial_payment: the two payments are not jointly safe "
+                                    f"(lowest projected balance {pr.lowest_balance:.2f} on {pr.first_failure_date})")
         else:
             rejected.append("partial_payment: conditions not met (0 < safe < requested and earliest date within the deadline)")
 
     # wait for the earliest full-payment date
     if "full_payment" in profile.payment_methods and earliest and earliest > rd:
-        proofs.append(prove("wait for the earliest safe date", [(earliest, amt)]))
-        cands.append(Plan("wait", [(earliest, amt)], reason="full amount becomes safe later"))
+        if earliest <= req.desired_completion_date:
+            proofs.append(prove("wait for the earliest safe date", [(earliest, amt)]))
+            cands.append(Plan("wait", [(earliest, amt)], reason="full amount becomes safe later"))
+        else:
+            rejected.append(f"wait: the earliest safe date {earliest} is after the deadline "
+                            f"{req.desired_completion_date}, so the request cannot complete in time")
     elif "full_payment" in profile.payment_methods and earliest is None:
         rejected.append("wait: the full amount is never safe within the 90-day forecast")
 

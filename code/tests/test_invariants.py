@@ -110,10 +110,49 @@ def test_partial_plan_is_exactly_two_payments_summing_to_the_request():
 
 def test_installment_plan_totals_the_supplied_option_including_fees():
     opt = PaymentOption("payment_option_1", "r1", "installments", 200.0, 3, dt.date(2026, 1, 5), 30, 100.0, 600.0)
-    d = decide(_rec(BASE_FLOWS, balance=5000.0, methods=("installments",), max_months=6), _req(amount=500.0), [opt])
+    req = _req(amount=500.0, deadline=dt.date(2026, 3, 10))       # the schedule ends 2026-03-06
+    d = decide(_rec(BASE_FLOWS, balance=5000.0, methods=("installments",), max_months=6), req, [opt])
     assert d.method == "installments"
     assert abs(d.plan.total_paid - opt.total_payable_amount) < 0.011
     assert d.plan.total_paid > 500.0                 # financing fees make it cost more than requested
+    assert d.plan.payments == list(opt.schedule())   # followed exactly, never shifted
+
+
+def test_an_installment_schedule_finishing_after_the_deadline_is_ineligible():
+    opt = PaymentOption("payment_option_1", "r1", "installments", 200.0, 3, dt.date(2026, 1, 5), 30, 100.0, 600.0)
+    req = _req(amount=500.0, deadline=dt.date(2026, 2, 1))        # the schedule ends 2026-03-06
+    d = decide(_rec(BASE_FLOWS, balance=5000.0, methods=("installments",), max_months=6), req, [opt])
+    assert d.method != "installments"
+    assert any("after the deadline" in r for r in d.rejected)
+
+
+def test_an_installment_schedule_starting_before_the_request_date_is_ineligible():
+    opt = PaymentOption("payment_option_1", "r1", "installments", 200.0, 3, dt.date(2025, 12, 1), 30, 100.0, 600.0)
+    d = decide(_rec(BASE_FLOWS, balance=5000.0, methods=("installments",), max_months=6), _req(amount=500.0), [opt])
+    assert d.method != "installments"
+    assert any("before the request date" in r for r in d.rejected)
+
+
+def test_no_recommended_plan_ever_finishes_after_the_deadline():
+    opt = PaymentOption("payment_option_1", "r1", "installments", 100.0, 3, dt.date(2026, 1, 5), 30, 0.0, 300.0)
+    rec = _rec(BASE_FLOWS, balance=1200.0, methods=("full_payment", "partial_payment", "installments"), max_months=6)
+    for deadline in (dt.date(2026, 1, 10), dt.date(2026, 2, 15), dt.date(2026, 4, 1)):
+        d = decide(rec, _req(amount=300.0, deadline=deadline), [opt])
+        if d.plan is not None:
+            assert d.plan.last_date <= deadline, (deadline, d.method)
+
+
+def test_a_partial_plan_is_only_offered_when_both_payments_are_jointly_safe():
+    """The first payment lowers the balance the second draws on, so baseline capacity alone
+    cannot prove the pair. Every offered partial plan must survive its own forecast."""
+    flows = [Flow(dt.date(2026, 1, 10), 300.0, "income", "salary", "income:s", "e", "salary"),
+             Flow(dt.date(2026, 1, 25), -700.0, "fixed", "Big bill", "desc:big", "e2", "utilities")]
+    rec = _rec(flows, balance=900.0, minimum=200.0, methods=("full_payment", "partial_payment"))
+    d = decide(rec, _req(amount=600.0), [])
+    for plan in d.candidates:
+        if plan.method == "partial_payment":
+            path = simulate(rec, plan.payments, {c.series_key: c.new_amount for c in plan.changes})
+            assert path.trough >= rec.profile.minimum_balance_to_keep - 0.005
 
 
 def test_a_plan_missing_the_deadline_loses_to_one_that_meets_it():

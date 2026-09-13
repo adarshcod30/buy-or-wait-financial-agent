@@ -8,6 +8,7 @@ Prints one line per requirement with PASS/FAIL and the evidence, exits non-zero 
 from __future__ import annotations
 
 import csv
+import json
 import re
 import subprocess
 import sys
@@ -54,7 +55,23 @@ def main() -> int:
     changes = [r for r in rows if r["spending_changes_needed"] != "none"]
     check("FR6 at most three spending changes per row", all(len(r["spending_changes_needed"].split("|")) <= 3 for r in changes),
           f"{len(changes)} rows with changes")
-    check("FR9 every blank amount resolved from its image", True, "16 images, 16 facts; see runs/run_summary.json evidence_notes")
+    blanks = [e for e in ds.events if e.amount is None]
+    facts_path = Path(__file__).resolve().parent.parent.parent / ".cache" / "facts.json"
+    resolved, provenance_ok = {}, True
+    if facts_path.is_file():
+        for f in json.loads(facts_path.read_text())["facts"]:
+            if f.get("fact_type") == "blank_amount_resolved" and f.get("related_event_id"):
+                resolved[f["related_event_id"]] = f
+    missing = [e.event_id for e in blanks if e.event_id not in resolved]
+    for e in blanks:
+        f = resolved.get(e.event_id)
+        if f and (not f.get("currency") or not f.get("provenance") or not isinstance(f.get("amount"), (int, float))
+                  or f["amount"] <= 0):
+            provenance_ok = False
+    check("FR9 every blank event amount resolved, with currency and provenance",
+          blanks and not missing and provenance_ok,
+          f"{len(blanks)} blank amounts, {len(resolved)} resolved, {len(missing)} unresolved"
+          + ("" if provenance_ok else ", provenance incomplete"))
     usage = CODE / "evaluation" / "usage_report.md"
     txt = usage.read_text() if usage.is_file() else ""
     check("FR12 evaluation/usage_report.md present with tokens and cost", usage.is_file() and "Total input tokens" in txt and "Estimated total cost" in txt, str(usage))
