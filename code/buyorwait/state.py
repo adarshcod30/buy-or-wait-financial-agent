@@ -70,6 +70,7 @@ class Policy:
     cadence_mode: str = "mean"                # mean (unbucketed gap, default) | median (bucketed)
     variable_model: str = "discrete"          # discrete (default, measured best) | hybrid (accrue sub-monthly)
     capacity_horizon: str = "capacity_only"   # capacity_only (default) | full | last_income
+    variable_scale: float = 1.0               # diagnostic: multiply projected variable spend
     variable_window_days: int = 180
     debits_before_credits: bool = False
     pending_debits_immediate: bool = True
@@ -395,7 +396,7 @@ def reconstruct(ds: Dataset, user_id: str, request_date: dt.date, facts: List[Fa
             cad = cadence_days([e.event_date for e in recent], policy.cadence_mode)
             amounts = [to_home(e.amount, e.currency, e.settlement_date, e.event_id) for e in recent]
             latest = group[-1]
-            budget = _budget(amounts, cat, widths, latest.minimum_allowed_amount, policy)
+            budget = _budget(amounts, cat, widths, latest.minimum_allowed_amount, policy) * policy.variable_scale
             key = f"cat:{cat}"
             flex = latest.flexibility
             if flex != "fixed":

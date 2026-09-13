@@ -652,3 +652,42 @@ configuration.
 This is the largest single improvement in the build, and it came from the diagnostic in section 22
 rather than from more search: separating "knife-edge amount" from "wrong month" was what made it
 findable.
+
+
+## 24. The two knife-edge cases: proved unfixable by any global rule
+
+Section 23 fixed the month 2-3 drift and left two genuine knife-edge samples, request_06 and
+request_21. This section settles them, and the answer is a proof rather than another attempt.
+
+**They require opposite corrections.** Measured against gold's pinned troughs:
+
+| Sample | Our trough | Gold trough | Delta | Variable spend before the trough | Required scale on it |
+|---|---|---|---|---|---|
+| request_06 | 1,350.81 | 1,403.30 | +52.49 (+3.74%) | 231.79 | **0.774** |
+| request_21 | 3,471.55 | 3,343.35 | -128.20 (-3.83%) | 207.63 | **1.617** |
+
+One demands 23% *less* projected variable spend, the other 62% *more*. They sit on opposite sides
+of 1.0, so no global parameter can satisfy both, and the errors are not a shared bias that a
+calibration could remove. A sweep of a global scale factor from 0.90 to 1.10 confirms it directly:
+the categorical total peaks at scale 1.00 with 125 hits, neither sample matches at any scale, and
+both fall away on either side.
+
+**Why they cannot be resolved by inferring the placement rule either.** Enumerating every count
+vector against integer budgets inside their measured feasible intervals, request_06 admits **204**
+distinct feasible count vectors and request_21 admits **127**. Each sample supplies one equation.
+There is no basis in the data for preferring the true vector among a hundred or more alternatives,
+so no amount of inference over these two rows can identify it.
+
+**One structural question was worth asking and is now answered.** Because every category-level
+cadence is exact, per-description projection looked plausible. It is not: within a category the
+per-description gaps are irregular (user_06's dining descriptions show gaps of 14 and 63 days for
+one label, 98 and 14 for another) while the category-level gap is exactly 7 throughout. The
+generator places category-level occurrences on an exact grid and rotates a description for each
+one, so pooling by category is structurally correct and per-description projection would be wrong.
+That confirms an earlier design decision that had been taken on weaker evidence.
+
+**Conclusion.** These two rows are the irreducible residue of a forecast that is accurate to 1.64%
+median trough error. Closing them would require reproducing the generator's occurrence placement
+exactly, which section 22 shows is not identifiable from 21 equations against roughly 200 unknowns.
+`Policy.variable_scale` is retained as the diagnostic that produced the proof; it defaults to 1.0
+and is not used by the shipped path.
