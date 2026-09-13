@@ -83,10 +83,21 @@ def cmd_run(args) -> int:
     with audit_path.open("w", encoding="utf-8") as audit:
         for i, req in enumerate(requests, 1):
             rf = facts.get(req.request_id, [])
-            if client is not None:
-                res, trace = run_agent(ds, req, rf, client, policy)
+            if args.no_ensemble:
+                ens = None
+                if client is not None:
+                    res, trace = run_agent(ds, req, rf, client, policy)
+                else:
+                    res, trace = decide_request(ds, req, rf, policy), None
             else:
-                res, trace = decide_request(ds, req, rf, policy), None
+                from buyorwait.ensemble import decide_with_uncertainty
+                ens = decide_with_uncertainty(ds, req, rf, policy)
+                if client is not None:
+                    res, trace = run_agent(ds, req, rf, client, policy)
+                    res.row["amount_safe_to_pay"] = ens.row["amount_safe_to_pay"]
+                else:
+                    res, trace = ens.base, None
+                    res.row["amount_safe_to_pay"] = ens.row["amount_safe_to_pay"]
             rows.append(res.row)
             problems_total += len(res.problems)
             rec = {"request_id": req.request_id, "row": res.row, "problems": res.problems,
@@ -95,6 +106,12 @@ def cmd_run(args) -> int:
                    "candidates": [{"method": p.method, "option_id": p.option_id, "changes": [c.render() for c in p.changes]}
                                   for p in res.decision.candidates],
                    "rejected": res.decision.rejected}
+            if ens is not None:
+                rec["forecast_confidence"] = round(ens.agreement, 3)
+                rec["amount_spread"] = [round(x, 2) for x in ens.amount_spread]
+                rec["scenarios"] = ens.scenarios
+                if len(ens.outcome_counts) > 1:
+                    rec["alternative_outcomes"] = ens.outcome_counts
             if trace is not None:
                 rec["agent"] = trace.__dict__
                 traces.append(trace)
@@ -228,6 +245,8 @@ def main(argv=None) -> int:
         p.add_argument("--output", default=None)
         p.add_argument("--limit", type=int, default=0)
         p.add_argument("--debits-first", action="store_true", help="clear a day's debits before its credits")
+        p.add_argument("--no-ensemble", action="store_true",
+                       help="single central forecast only; skip the uncertainty ensemble and its confidence")
         p.add_argument("--show", default=None)
     args = ap.parse_args(argv)
     _setup_logging(args.verbose)

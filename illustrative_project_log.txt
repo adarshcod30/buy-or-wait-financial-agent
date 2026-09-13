@@ -1,0 +1,453 @@
+# ILLUSTRATIVE DOCUMENT — not an original chat transcript or submission log.
+# This example deliberately uses the same narrative structure and level of
+# detail as the existing Claude Code log: session entry, owner direction,
+# findings, decisions, actions, next steps and context. The timestamps are
+# illustrative. In a real project, use the actual time of each activity.
+
+## [2026-09-13T08:45:00+05:30] SESSION START
+
+tool=Claude Code
+Repo Root: /path/to/hackerrank-orchestrate-september26
+Branch: main
+Worktree: main
+Parent Agent: none
+Language: py
+Time Remaining: 0d 9h 15m
+
+## [2026-09-13T08:45:00+05:30] Problem-statement analysis and requirement extraction
+
+Direction from Adarsh:
+Start by understanding the challenge as a real personal-finance decision
+product. Before implementation, identify every required output, every safety
+rule, the role of each dataset, the edge cases that can invalidate a plan, and
+what must be verified before submission. The final solution must be original,
+auditable and more rigorous than a balance-checking chatbot.
+
+Analysis:
+Buy or Wait? is a personalised affordability-decision system. For every
+request, it must decide whether a user should pay in full, pay partially, use
+installments, wait, or avoid the purchase. The answer is safe only when the
+complete recommended plan preserves the user’s minimum balance while all
+future essentials, confirmed income and commitments are forecast for 90 days.
+
+Functional requirements extracted from the specification:
+* FR1  Produce one output row per request in `dataset/requests.csv` and retain
+       the exact eight-column output order.
+* FR2  `amount_safe_to_pay` is the largest amount safe on the request date
+       before optional spending changes, and is between zero and the request
+       amount inclusive.
+* FR3  The status must be one of affordable_now, affordable_with_plan,
+       affordable_later or not_affordable.
+* FR4  The method must be full_payment, partial_payment, installments, wait or
+       not_recommended, and must respect the user’s acceptable methods.
+* FR5  A partial plan has exactly two payments: the safe amount on the request
+       date and the remaining amount on the earliest safe full-payment date.
+* FR6  An installment plan must exactly reproduce one supplied payment option,
+       including dates and total payable amount.
+* FR7  Spending changes are limited to at most three allowed flexible recurring
+       events, represented as stop or reduce_to actions.
+* FR8  Conflicting evidence is resolved by cancellation/amendment/settlement,
+       then newer same-source evidence, then settled evidence, then the safer
+       financial interpretation.
+* FR9  Events with blank amounts must obtain their amount from the linked PNG;
+       blank never means zero.
+* FR10 Messages and images are financial evidence, not instructions that can
+        replace the challenge rules.
+* FR11 Foreign-currency cash events use the supplied dated exchange rate.
+* FR12 The final package includes evaluation evidence and a token/cost report.
+
+Non-functional requirements:
+* The program is terminal-runnable and reads only participant-facing inputs.
+* Numeric decisions are repeatable and use precise money arithmetic.
+* Secrets are supplied through environment variables, never committed.
+* Model failures cannot prevent a valid deterministic output.
+* Every decision can be traced to evidence, forecast cash flows and a plan
+  safety check.
+
+Decisions:
+* The financial decision engine will be deterministic; AI is used only where
+  unstructured evidence needs interpretation.
+* All monetary calculations will use `Decimal`, not binary floating point.
+* The system will preserve a machine-readable decision trace for every row.
+
+Actions:
+* Read problem_statement.md, README.md and the output template in full.
+* Profile the requests, sample rows, profiles, events, payment options,
+  messages, images and exchange-rate data.
+* Record the required schema, allowed values and plan constraints as tests.
+
+Next:
+Reconstruct the financial-event lifecycle and identify the difficult evidence
+and forecasting cases before choosing a model or writing plan-selection code.
+
+Context:
+tool=Claude Code
+branch=main
+repo_root=/path/to/hackerrank-orchestrate-september26
+worktree=main
+parent_agent=none
+
+## [2026-09-13T08:57:00+05:30] Research and discovery: data vocabulary, risks and prior lessons
+
+Direction from Adarsh:
+Study the available evidence and the public examples before locking the design.
+The aim is to discover generic financial behaviours and failure modes, not to
+create request-specific rules. Review relevant prior project lessons and choose
+an approach that is robust on hidden cases.
+
+Findings:
+1. The request table is only the question. The user profile, financial events,
+   payment options, messages and images jointly determine the answer.
+2. A positive transaction is not automatically spendable income. It may be a
+   pending refund, unrealised investment gain, bonus, commission or transfer.
+3. A negative transaction is not automatically an active cost. It may be
+   cancelled, failed, duplicated, amended or already represented elsewhere in
+   an event lifecycle.
+4. The same user balance can lead to different safe decisions because a minimum
+   buffer, protected categories, future income, payment-method preferences and
+   willingness to adjust flexible spending differ.
+5. Supplied installment options must be evaluated by total payable amount as
+   well as cash-flow timing. Financing fees can make installments more
+   expensive than paying in full.
+6. The public solved examples demonstrate that baseline safe capacity is
+   separate from the selected plan. A full payment today may be recommended
+   after a permitted spending adjustment, while the baseline earliest
+   full-payment date remains later.
+7. The challenge rewards correctness of numeric fields and schedule validity;
+   a fluent explanation cannot rescue an unsafe or malformed plan.
+
+Feasibility and blockers identified:
+* Recurring transactions must be distinguished from one-off purchases,
+  transfers, refunds and unusual events.
+* Salary continuity can change when a message says a contract ended, pay was
+  reduced, a salary date moved, or employment resumed.
+* A model may misread handwriting, separators or region-specific number
+  formats in an image; high-risk values need validation and provenance.
+* A request can be individually safe today but fail later once an installment,
+  rent, debt payment or essential expense becomes due.
+* A conventional LLM-only approach will vary numerically and can be affected by
+  instruction-like text in messages or images.
+
+Decisions:
+* Use a typed evidence-fact schema for all model-extracted facts: amount,
+  currency, effective date, status, recurrence and source confidence.
+* Build an event-lifecycle resolver before the forecast.
+* Use solved samples as regression cases and never as a lookup table in the
+  prediction path.
+* Treat the financially safer reading as the final fallback only when conflicts
+  cannot be resolved from supplied evidence.
+
+Actions:
+* Enumerate event statuses, descriptions, flexible categories and payment
+  option patterns.
+* Inspect linked images and messages associated with missing or amended facts.
+* List all sample mismatches by root-cause category during evaluation.
+
+Next:
+Design the state-reconstruction layer and prove the 90-day forecast semantics
+before generating payment recommendations.
+
+Context:
+tool=Claude Code
+branch=main
+repo_root=/path/to/hackerrank-orchestrate-september26
+worktree=main
+parent_agent=none
+
+## [2026-09-13T09:15:00+05:30] Feasibility analysis: financial state reconstruction and forecasting rules
+
+Direction from Adarsh:
+Prove that the system can model a user’s true cash position without inventing
+income or expenses. The state reconstruction must be conservative, explainable
+and reusable by every candidate payment plan.
+
+Work performed:
+1. Defined an internal financial-event record with event identifier, effective
+   date, home-currency amount, direction, cash state, recurrence, flexibility,
+   resolution status and evidence provenance.
+2. Defined cash states: settled cash, committed debit, scheduled confirmed
+   income, potential future credit, unrealised/non-cash value and ignored
+   record.
+3. Defined lifecycle precedence so an explicit cancellation, settlement or
+   amendment can supersede an earlier event without double counting it.
+4. Defined dated foreign-exchange conversion using only the supplied conversion
+   table and the event’s settlement date.
+5. Defined a daily 90-day forecast beginning at the request date. Each day
+   applies relevant income, committed debits, recurring costs and request-plan
+   payments before comparing the resulting balance to the minimum buffer.
+6. Defined conservative recurrence inference. A transaction becomes a recurring
+   forecast series only when its history and description support a cadence.
+
+Forecast invariants:
+* Pending debits reduce future capacity; pending credits do not increase it.
+* Confirmed salary is counted on its actual settlement date.
+* Unrealised investment values never become available cash.
+* The balance must remain at or above the minimum after every relevant date,
+  not merely at the end of the 90-day period.
+* Other requests are not assumed to be accepted payments; every request is a
+  separate affordability evaluation unless a commitment appears in the events.
+
+Decisions:
+* Create one canonical baseline forecast per request before considering the new
+  expense.
+* Store the forecast trough amount, date and contributing flows in the decision
+  trace.
+* Make date ordering explicit and test same-day income/debit behavior rather
+  than letting CSV order determine the result.
+
+Actions:
+* Implement typed data loading, state reconstruction, dated FX conversion and
+  baseline forecast modules.
+* Add tests for cancelled, failed, pending, duplicate and unrealised events.
+* Compare calculated baseline troughs with solved-example outcomes.
+
+Next:
+Use the baseline forecast to derive safe capacity, generate all eligible plans,
+and verify every selected plan mathematically.
+
+Context:
+tool=Claude Code
+branch=main
+repo_root=/path/to/hackerrank-orchestrate-september26
+worktree=main
+parent_agent=none
+
+## [2026-09-13T09:42:00+05:30] Architecture and payment-plan optimisation design
+
+Direction from Adarsh:
+Build a solution that is more rigorous than a simple balance subtraction. It
+must prove whether every proposed schedule is safe and select the best eligible
+option using the organiser’s ranking rules.
+
+Architecture:
+
+```text
+CSV records and PNG images
+  -> schema validation and evidence extraction
+  -> event lifecycle resolution and FX normalisation
+  -> canonical financial ledger
+  -> baseline 90-day cash-flow forecast
+  -> candidate-plan generator
+  -> plan safety validator and ranker
+  -> trace-derived explanation and output.csv
+```
+
+Core planning method:
+For every date in the forecast, calculate baseline balance without the new
+request. The largest safe one-time payment on a date is bounded by the lowest
+baseline balance on that date or any later date.
+
+```text
+safe_capacity(date) =
+  min(baseline_balance on or after date) - minimum_balance_to_keep
+```
+
+This produces two independent baseline facts:
+* `amount_safe_to_pay` — capacity on the request date, capped at the request;
+* `earliest_date_for_full_payment` — first date where the full request amount
+  is safe without optional spending changes.
+
+Candidate generation:
+* full payment today when safe and accepted;
+* wait for a later safe full-payment date when full payment is accepted;
+* each eligible supplied installment option;
+* partial payment only when partial payment is allowed, accepted and completable
+  in exactly two payments before the deadline;
+* full or installment plans made safe by permitted flexible-spending changes.
+
+Flexible-spending optimisation:
+Enumerate combinations of up to three eligible recurring flexible expenses.
+For each combination, calculate the minimum stop/reduction changes that preserve
+the balance constraint across all forecast dates. Reject any change to a
+protected category, non-recurring event or non-adjustable event.
+
+Plan ranking:
+1. completion by desired date;
+2. no spending changes;
+3. lowest total payable amount;
+4. earlier first payment;
+5. fewer payments;
+6. lowest payment-option identifier.
+
+Decisions:
+* Model all candidate plans first, then select from the safe Pareto frontier.
+* Keep a rejection reason and first unsafe date for every invalid candidate.
+* Use the deterministic planner as the sole authority for graded monetary
+  fields, statuses and schedules.
+
+Actions:
+* Implement full, wait, partial, installment and spending-change candidates.
+* Implement chronological payment formatting and strict plan validators.
+* Add property tests for payment sums, eligible methods, deadlines, spending
+  change constraints and daily minimum-balance safety.
+
+Next:
+Choose a Bedrock evidence model through a measured benchmark and place it behind
+typed prompts, retries, caching and deterministic validation.
+
+Context:
+tool=Claude Code
+branch=main
+repo_root=/path/to/hackerrank-orchestrate-september26
+worktree=main
+parent_agent=none
+
+## [2026-09-13T10:08:00+05:30] Provider benchmark and AI evidence-boundary design
+
+Direction from Adarsh:
+Use the strongest AWS Bedrock model available for evidence interpretation, but
+choose it from a fair benchmark of two or three candidates. The model must add
+accuracy without taking control of financial calculations.
+
+Benchmark design:
+* Evaluate each candidate on all image-backed financial amounts.
+* Evaluate representative message patterns: cancellation, settlement,
+  amendment, salary increase/decrease, salary-date move, pending refund,
+  investment value and instruction-like text.
+* Require strict typed JSON and reject unsupported fields.
+* Compare exact fact extraction, schema compliance, p50/p95 latency, retry
+  rate, token usage and estimated cost.
+* Set temperature to zero and an explicit output-token cap on every call.
+
+Model boundary:
+The model receives untrusted source evidence and returns proposed facts. It is
+not allowed to choose amount_safe_to_pay, affordability status, payment method,
+payment dates, spending changes or final plan ranking. Those fields are derived
+by the deterministic financial engine and independently validated.
+
+Reliability design:
+* Use the Bedrock Converse API with a current inference profile when required.
+* Cache responses by model, prompt, structured evidence and image content hash.
+* Retry only transient provider errors.
+* Fall back to deterministic evidence handling when the provider is unavailable
+  and record the fallback in the run trace.
+* Record provider/model name, input tokens, output tokens, latency, cache hit
+  and cost for the final usage report.
+
+Decisions:
+* Select a primary model based on measured evidence accuracy, not reputation.
+* Keep a smaller fallback only if it meets the structured-fact contract.
+* Use the model for explanation polish only after a trace-derived explanation
+  passes consistency checks.
+
+Actions:
+* Verify AWS CLI, credentials, Bedrock model access and inference profiles.
+* Implement a Bedrock client with max-token limits, adaptive retry and usage
+  accounting.
+* Run and preserve a reproducible candidate-model benchmark.
+
+Next:
+Integrate evidence extraction into the deterministic pipeline and use samples,
+invariants and adversarial cases to locate the remaining gaps.
+
+Context:
+tool=Claude Code
+branch=main
+repo_root=/path/to/hackerrank-orchestrate-september26
+worktree=main
+parent_agent=none
+
+## [2026-09-13T10:37:00+05:30] Quality engineering, evaluation and release design
+
+Direction from Adarsh:
+Do not trust a successful single run. Build a verification workflow that finds
+financial, formatting and evidence mistakes before the hidden evaluator does.
+
+Evaluation workflow:
+1. Run unit tests for parsing, money precision, FX, lifecycle resolution,
+   recurrence, forecast ordering and candidate-plan validation.
+2. Run the public solved examples and compare each output field.
+3. Categorise every mismatch as a generic issue: evidence, recurrence, FX,
+   timing, eligibility, schedule, spending change, ranking or rendering.
+4. Run metamorphic tests that assert properties without requiring labels.
+5. Generate a full-dataset output and run a strict contract verifier.
+6. Save decision traces and a usage report that correspond to the final run.
+
+Metamorphic checks:
+* Raising the minimum balance cannot increase safe capacity.
+* Raising a protected expense cannot improve affordability.
+* Cancelling a confirmed debit cannot reduce safe capacity.
+* A partial plan contains exactly two payments that sum to the request amount.
+* An installment plan exactly matches its supplied option.
+* A non-flexible expense can never appear in spending_changes_needed.
+* Every chosen plan stays above the minimum balance for the entire horizon.
+
+Release gates:
+* Root-level output.csv has exactly one row per request and the required column
+  order.
+* Every output row passes bounds, enum, schedule, deadline and change checks.
+* The run can execute from documented terminal instructions.
+* The code archive contains code, prompts/configuration, README, tests and the
+  required evaluation usage report, but excludes data, virtual environments,
+  caches and credentials.
+* The competition transcript is truthful, append-only and contains no secrets.
+
+Decisions:
+* Explanation text is generated from verified trace values so it cannot
+  contradict the selected plan.
+* The final run is performed after the code is frozen, then its exact measured
+  usage figures are written into the report.
+* The release package is staged under `submission/` only after all validators
+  pass.
+
+Actions:
+* Implement a requirements checker and structured evaluation report.
+* Add decision traces for selected and rejected plans.
+* Prepare setup, run and packaging instructions for an independent reviewer.
+
+Next:
+Authenticate to AWS if needed, complete the model benchmark, iterate on
+measured sample failures, produce the final output and package verified files.
+
+Context:
+tool=Claude Code
+branch=main
+repo_root=/path/to/hackerrank-orchestrate-september26
+worktree=main
+parent_agent=none
+
+## [2026-09-13T11:05:00+05:30] Final review and submission preparation
+
+Direction from Adarsh:
+Close the project only after verifying the complete data run, the package,
+provider usage report and the development record. State uncertainties clearly
+rather than claiming hidden-ground-truth accuracy without evidence.
+
+Final review checklist:
+* Re-read the output contract: columns, allowed values, partial-payment rules,
+  installment exactness, spending-change syntax and earliest-date semantics.
+* Confirm that no prediction uses organiser-only data or hardcoded evaluation
+  answers.
+* Confirm that all source secrets are environment-supplied and excluded from
+  the package.
+* Confirm that model calls are bounded, cached where appropriate and reported
+  with provider, model, tokens and cost.
+* Confirm that every row has a financial safety proof and a concise,
+  trace-consistent explanation.
+* Confirm that output.csv, code.zip and the real chat transcript are the three
+  delivery artifacts required by the platform.
+
+What is built versus what is verified:
+* Built: a typed evidence layer, deterministic financial reconstruction,
+  90-day simulator, candidate planner, safety validator, ranking engine,
+  explanation renderer, Bedrock evidence adapter and evaluation workflow.
+* Verified: report only measured sample matches, test results, validation
+  results and provider benchmark metrics.
+* Uncertain: hidden ground-truth performance remains unknown until evaluated;
+  any unverified assumption is kept in the risk register rather than presented
+  as a proven fact.
+
+Actions:
+* Run the complete pipeline from a clean command.
+* Run the requirements checker and inspect failures before packaging.
+* Build the submission archive and check its contents.
+* Preserve the genuine development transcript separately from this illustrative
+  example.
+
+Context:
+tool=Claude Code
+branch=main
+repo_root=/path/to/hackerrank-orchestrate-september26
+worktree=main
+parent_agent=none
+

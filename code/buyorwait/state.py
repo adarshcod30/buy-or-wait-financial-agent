@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from .config import FORECAST_DAYS
+from .budget import BudgetEstimate, estimate as estimate_budget, measure_widths
 from .data import Dataset, Event, Profile
 from .evidence_types import Fact
 from .fx import Converter
@@ -63,6 +64,8 @@ class AdjustableSeries:
 @dataclass
 class Policy:
     horizon_days: int = FORECAST_DAYS
+    budget_quantile: Optional[float] = None   # None = the method's central value; else the posterior quantile
+    budget_method: str = "mean"               # mean | posterior | midrange (see budget.py)
     variable_window_days: int = 180
     debits_before_credits: bool = False
     pending_debits_immediate: bool = True
@@ -137,10 +140,37 @@ def occurrence_budget(category: str, amounts: List[float], minimum_allowed: Opti
 
 # --------------------------------------------------------------------------- main
 
+_WIDTHS: Dict[int, Dict[str, float]] = {}
+
+
+def widths_for(ds: Dataset) -> Dict[str, float]:
+    """Per-category noise half-widths, measured once from the corpus and memoised."""
+    key = id(ds)
+    if key not in _WIDTHS:
+        _WIDTHS[key] = measure_widths(ds.events)
+    return _WIDTHS[key]
+
+
+def _budget(amounts: List[float], category: str, widths: Dict[str, float],
+            minimum_allowed: Optional[float], policy: Policy) -> float:
+    est = estimate_budget(amounts, category, widths.get(category, 0.0), minimum_allowed)
+    if est.exact:
+        return est.value
+    if policy.budget_quantile is not None:
+        from .budget import sample as sample_budget
+        return sample_budget(est, policy.budget_quantile)
+    if policy.budget_method == "mean":
+        return statistics.fmean(amounts)
+    if policy.budget_method == "midrange":
+        return (min(amounts) + max(amounts)) / 2
+    return est.value
+
+
 def reconstruct(ds: Dataset, user_id: str, request_date: dt.date, facts: List[Fact],
                 policy: Optional[Policy] = None) -> Reconstruction:
     policy = policy or Policy()
     profile = ds.profiles[user_id]
+    widths = widths_for(ds)
     home = profile.home_currency
     conv = Converter(ds.rates)
     notes: List[str] = []
@@ -337,7 +367,7 @@ def reconstruct(ds: Dataset, user_id: str, request_date: dt.date, facts: List[Fa
             cad = cadence_days([e.event_date for e in recent])
             amounts = [to_home(e.amount, e.currency, e.settlement_date, e.event_id) for e in recent]
             latest = group[-1]
-            budget = occurrence_budget(cat, amounts, latest.minimum_allowed_amount)
+            budget = _budget(amounts, cat, widths, latest.minimum_allowed_amount, policy)
             key = f"cat:{cat}"
             flex = latest.flexibility
             if flex != "fixed":
@@ -373,7 +403,8 @@ def reconstruct(ds: Dataset, user_id: str, request_date: dt.date, facts: List[Fa
                     continue
                 amounts = [to_home(e.amount, e.currency, e.settlement_date, e.event_id) for e in g]
                 latest = g[-1]
-                amt = amounts[-1] if len(set(round(a, 2) for a in amounts)) == 1 else occurrence_budget(cat, amounts, latest.minimum_allowed_amount)
+                amt = (amounts[-1] if len(set(round(a, 2) for a in amounts)) == 1
+                       else _budget(amounts, cat, widths, latest.minimum_allowed_amount, policy))
                 if cat == "rent" and rent_pct:
                     amt = round(amt * (1 + rent_pct / 100.0), 2)
                     applied.append(f"rent {desc} raised {rent_pct}% to {amt:.2f}")

@@ -69,7 +69,12 @@ def render(dec: Decision, req: Request, prof: Profile) -> str:
         return (f"Pay {money(cur, first[1])} today and the remaining {money(cur, second[1])} on {longdate(second[0])}. "
                 f"This completes the full request and keeps the {money(cur, minimum)} minimum protected.")
     if plan.method == "wait":
-        return (f"Pay {money(cur, amt)} in full on {longdate(plan.payments[0][0])}. "
+        pay_date = plan.payments[0][0]
+        if pay_date < req.desired_completion_date:
+            # There is slack before the deadline, so the recommendation is framed as waiting.
+            return (f"Wait until {longdate(pay_date)}, then pay {money(cur, amt)} in full. "
+                    f"Paying sooner would put the {money(cur, minimum)} minimum at risk.")
+        return (f"Pay {money(cur, amt)} in full on {longdate(pay_date)}. "
                 f"Paying earlier would take the balance below the {money(cur, minimum)} minimum.")
     raise ValueError(plan.method)
 

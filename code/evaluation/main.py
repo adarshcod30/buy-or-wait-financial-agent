@@ -90,3 +90,39 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def evaluate_ensemble(ds, facts_by_request, policy, quiet=False):
+    """Same scoring as `evaluate`, but each row is decided by the uncertainty ensemble."""
+    from buyorwait.ensemble import decide_with_uncertainty
+    fields = ["amount_safe_to_pay", "affordability_status", "recommended_payment_method", "payment_plan",
+              "earliest_date_for_full_payment", "spending_changes_needed", "decision_explanation"]
+    hits = {f: 0 for f in fields}
+    rel_err, flips, agreements = [], 0, []
+    for s in ds.samples:
+        req = s.request
+        res = decide_with_uncertainty(ds, req, facts_by_request.get(req.request_id, []), policy)
+        agreements.append(res.agreement)
+        flips += res.disagreed
+        gold = {f: getattr(s, f) for f in fields}
+        for f in fields:
+            g, o = str(gold[f]), str(res.row[f])
+            if f == "amount_safe_to_pay":
+                hits[f] += abs(float(g) - float(o)) < 0.011
+                rel_err.append(abs(float(g) - float(o)) / max(1.0, float(g)))
+            else:
+                hits[f] += g == o
+        if not quiet:
+            marks = "".join("." if (abs(float(gold[f]) - float(res.row[f])) < 0.011 if f == "amount_safe_to_pay"
+                                    else str(gold[f]) == str(res.row[f])) else "X" for f in fields)
+            print(f"{req.request_id} [{marks}] agree={res.agreement:.0%} {'FLIP ' if res.disagreed else '     '}"
+                  f"{gold['affordability_status']}/{gold['recommended_payment_method']} -> "
+                  f"{res.row['affordability_status']}/{res.row['recommended_payment_method']}"
+                  + (f"  outcomes={len(res.outcome_counts)}" if len(res.outcome_counts) > 1 else ""))
+    n = len(ds.samples)
+    summary = {f: f"{hits[f]}/{n}" for f in fields}
+    summary["amount_rel_err_median"] = round(statistics.median(rel_err), 4)
+    summary["amount_within_5pct"] = sum(1 for e in rel_err if e <= 0.05)
+    summary["mean_agreement"] = round(statistics.fmean(agreements), 3)
+    summary["rows_flipped_by_ensemble"] = flips
+    return summary
