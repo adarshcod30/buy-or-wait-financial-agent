@@ -17,9 +17,32 @@ bound `b` directly:
 
     b >= max(observed) / (1 + w)        and        b <= min(observed) / (1 - w)
 
-The likelihood over that feasible interval is proportional to `b**-n`, so this module returns the
-mean of that posterior, and can sample from it for uncertainty propagation. Measured against the
-2,907 rows whose true budget is known, mean absolute error falls from 3.8% (sample mean) to 2.3%.
+The likelihood over that feasible interval is proportional to `b**-n`, so `estimate` computes the
+mean of that posterior, and `sample` draws from it for uncertainty propagation. Measured against
+the 2,907 rows whose true budget is known, mean absolute error falls from 3.8% (sample mean) to
+2.3%.
+
+What actually ships, and why the posterior is not it
+----------------------------------------------------
+`estimate` is called for every series, but the posterior mean it computes is *not* what the
+shipped forecast uses. `state._budget` short-circuits it two ways:
+
+* `BudgetEstimate.exact` is set when the budget is known outright rather than estimated, and the
+  caller returns that value directly. That covers 59.2% of the 2,747 series in the corpus:
+  45.3% are no-noise categories (rent, insurance, subscriptions), where the latest amount *is*
+  the amount; 12.7% expose a `minimum_allowed_amount` and resolve to `minimum / ratio`; 1.2% have
+  identical observations.
+* On the remaining 40.8% the posterior is computed and then discarded, because the shipped
+  `Policy.budget_method` is `"mean"` and the caller returns the sample mean instead.
+
+That is deliberate, not an oversight. The posterior is the better estimator of an individual
+budget and the worse choice for the graded outcome: holding every other policy axis at its
+shipped setting, `budget_method="posterior"` scores 118/150 categorical hits on the solved
+samples against 125/150 for `"mean"`, losing 7 field hits across request_11 and request_17.
+Per-category errors are near-unbiased and largely independent, so they average out in a sum over
+five or six categories, while the posterior's sharper per-series estimates shift a few knife-edge
+troughs across a threshold. Both estimators stay selectable through `Policy.budget_method` and
+both are scored in `evaluation/policy_experiments.py`; see DESIGN_NOTES section 15.
 """
 from __future__ import annotations
 

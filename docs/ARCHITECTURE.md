@@ -46,9 +46,9 @@ messages, images ─► evidence.py ─► typed Fact objects ─► state.py �
 | `buyorwait/data.py` | 264 | Typed load of nine CSVs into frozen dataclasses, indexed by `user_id`, `request_id`, `related_event_id` and `(rate_date, from, to)`. Blank amounts load as `None`, never zero. |
 | `buyorwait/fx.py` | 59 | Dated conversion. Exact rate for the settlement date, then documented fallbacks (nearest earlier, inverse, USD/EUR hop); a genuinely missing pair raises `FxError`. |
 | `buyorwait/evidence_types.py` | 71 | The trust boundary: 18 `FACT_TYPES`, of which 8 are in `CASH_AFFECTING`. |
-| `buyorwait/evidence.py` | 245 | Messages and images to facts. Model first, regex fallback, two-reader consensus on images, safer-reading rule on message conflicts. |
-| `buyorwait/budget.py` | 129 | Recovers the hidden per-occurrence budget from order statistics; measures each category's noise half-width from the corpus. |
-| `buyorwait/state.py` | 466 | Reconstruction into dated `Flow` objects, with `Policy` carrying every modelling choice. |
+| `buyorwait/evidence.py` | 258 | Messages and images to facts. Model first, regex fallback, two-reader consensus on images, safer-reading rule on message conflicts. |
+| `buyorwait/budget.py` | 152 | Recovers the hidden per-occurrence budget and measures each category's noise half-width from the corpus. Implements three estimators; the shipped default is the exact `minimum / ratio` where available and the sample mean elsewhere, not the order-statistics posterior. |
+| `buyorwait/state.py` | 476 | Reconstruction into dated `Flow` objects, with `Policy` carrying every modelling choice. |
 | `buyorwait/forecast.py` | 92 | Day-by-day simulation, `amount_safe_to_pay`, `earliest_full_payment_date`, `is_safe`. |
 | `buyorwait/planner.py` | 320 | Candidate plans, spending-change search, the ranking rule, and a `Proof` per candidate. |
 | `buyorwait/verify.py` | 126 | The submission contract, re-checked on the rendered strings. |
@@ -137,8 +137,11 @@ id. This is a lexicographic total order, so sorting yields the unique optimum.
 
 The model may only name a candidate the tools produced. After it submits, the arbiter re-applies
 the ranking; a differing choice is recorded in the audit and does not change the row. On the final
-run the model agreed with the arbiter on 244 of 250 requests, averaging 2.0 turns, with zero
-provider fallbacks.
+run the model agreed with the arbiter on 244 of 250 requests, with zero provider fallbacks. Every
+request took exactly two turns (`analyze_request`, then `submit_decision`); the third tool,
+`inspect_flows`, is wired as an escape hatch and no request in this corpus invoked it. Of the six
+non-agreements, five are abstentions where the model returned no choice and the ranking stood; one,
+`request_178`, is a genuine disagreement the arbiter resolved correctly on eligibility grounds.
 
 ## 8. Verification, in layers
 
@@ -167,7 +170,7 @@ rationale is lost. Unresolved blank amounts are excluded with a note, never trea
 | Method mix | full_payment 68, installments 56, wait 58, partial_payment 10, not_recommended 58 |
 | Candidate proofs recorded | 321 |
 | Agent agreement with the arbiter | 244 / 250 |
-| Model calls / tokens / estimated cost | 747 / 926,677 / USD 0.93 |
+| Model calls / tokens / estimated cost | 500 / 720,385 / USD 0.72 |
 
 Sample accuracy, distributions and cost detail are in `README.md`,
 `code/evaluation/usage_report.md` and `code/evaluation/policy_experiments.md`.

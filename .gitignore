@@ -25,3 +25,8 @@ code.zip
 
 # Submission artifacts (uploaded to HackerRank, not tracked)
 submission/
+
+# local agent config and private planning notes
+CLAUDE.md
+CLAUDE.local.md
+docs/RESEARCH_AND_EXECUTION_PLAN.md

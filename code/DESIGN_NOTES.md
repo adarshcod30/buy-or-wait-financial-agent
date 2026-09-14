@@ -102,9 +102,15 @@ Fixed bills dated on `request_date` are still owed and are projected; variable s
 ## 7. Same-day debits and credits
 
 End-of-day netting is the default; `--debits-first` clears a day's debits before its credits.
-On the samples the choice moves amount error (median relative error 8.7% versus 6.8%) but not a
-single graded categorical field, so the conservative reading of the specification was not
-forced. It stays a flag so the interview can show the trade-off.
+The trade-off is real in both directions, measured with every other policy axis at its shipped
+setting: debits-first cuts median amount error from **6.43% to 3.91%** and gains one row inside
+five percent, but costs **four categorical hits (125 to 121)**, both losses landing on request_17
+and request_19. Since five of the six graded dimensions are exact-match categorical and the amount
+is a magnitude, end-of-day wins and debits-first stays a flag.
+
+(An earlier revision of this note claimed the choice moved the amount error "but not a single
+graded categorical field". That was measured before the capacity-horizon change and is no longer
+true; the numbers above are from the shipped configuration.)
 
 ## 8. Spending changes: smallest disruption
 
@@ -163,16 +169,29 @@ So the only estimation error the forecast carries is the error in recovering the
 
 **Estimator.** For `n` draws from `Uniform(b(1-w), b(1+w))` the sample mean converges as
 `1/sqrt(n)`, but the order statistics bound `b` directly: `b >= max/(1+w)` and `b <= min/(1-w)`,
-with likelihood proportional to `b**-n` inside that interval. `budget.py` returns the mean of
-that posterior. The per-category half-width is itself measured from the corpus, using the fact
+with likelihood proportional to `b**-n` inside that interval. `budget.estimate` computes the mean
+of that posterior. The per-category half-width is itself measured from the corpus, using the fact
 that `E[(max-min)/(max+min)] = w(n-1)/(n+1)`, which makes each series an unbiased estimate of `w`.
 Validated against the 2,907 rows whose true budget is known, mean absolute error falls from 3.81%
 to 2.20% for dining, 3.22% to 2.41% for entertainment and 2.21% to 1.84% for shopping.
 
-**And it did not help.** Measured end to end on the samples, the better estimator left the trough
-error unchanged and cost one categorical row. The reason is visible once stated: per-category
+**And it did not help. It actively hurt.** Holding every other policy axis at its shipped setting
+(`variable_model=discrete`, `cadence_mode=mean`, end-of-day ordering, `capacity_horizon=capacity_only`),
+`budget_method="posterior"` scores **118/150** categorical hits against **125/150** for `"mean"`,
+and median amount error rises from 6.43% to 6.66%. The seven lost hits land on just two samples,
+request_11 (-3) and request_17 (-4); the count of fully-correct rows is unchanged at 16/25.
+
+Note also how rarely the posterior decides anything. Across the corpus's 2,747 user-category
+series, 59.2% return `BudgetEstimate.exact` and never reach it: 45.3% are no-noise categories
+where the latest amount is the amount, 12.7% expose a `minimum_allowed_amount` and resolve to
+`minimum / ratio`, 1.2% have identical observations. On the remaining 40.8% the shipped
+`budget_method="mean"` discards the posterior for the sample mean. So the better estimator of an
+individual budget is, measurably, the worse choice for the graded outcome.
+
+The reason is visible once stated: per-category
 errors are near-unbiased and largely independent, so they average out in a sum over five or six
-categories. The residual trough error is dominated not by how large each occurrence is but by
+categories, while the posterior's sharper per-series estimates push a few knife-edge troughs
+across a threshold. The residual trough error is dominated not by how large each occurrence is but by
 **how many occurrences fall before the trough**, which depends on cadence anchoring the data does
 not pin down. Snapping the estimate to the integer grid was also tested; the feasible interval
 still spans two or three grid points for a typical budget, so it recovers the exact value only
@@ -197,7 +216,8 @@ same categorical outcome. On the 250 evaluation requests mean confidence is 0.89
 below 0.6; those are exactly the knife-edge rows, and the audit records their full amount range.
 
 **What was tried and rejected.** Letting the ensemble *decide* the categorical fields by majority,
-rather than only estimating the amount, halved the sample amount error from 6.8% to 3.3% but cost
+rather than only estimating the amount, halved the sample amount error (6.8% to 3.3% against the
+then-current 6.8% baseline; the shipped baseline is now 6.43%) but cost
 one sample its status, method and plan together. A robustness filter that admitted only plans
 surviving a fixed share of scenarios changed nothing, because the candidate sets are stable even
 when the amounts are not. Since the categorical fields are graded exactly and the amount is not,

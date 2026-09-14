@@ -182,6 +182,16 @@ def widths_for(ds: Dataset) -> Dict[str, float]:
 
 def _budget(amounts: List[float], category: str, widths: Dict[str, float],
             minimum_allowed: Optional[float], policy: Policy) -> float:
+    """The per-occurrence budget the forecast projects forward.
+
+    Note which branch actually runs under the shipped policy, because `budget.estimate` computes
+    an order-statistics posterior that this function usually does not use. `est.exact` covers
+    59.2% of the corpus's series (no-noise categories, a known `minimum_allowed_amount`, or
+    identical observations) and returns outright. On the other 40.8% the shipped
+    `budget_method="mean"` returns the sample mean and the posterior is discarded. That costs a
+    little wasted work and buys 7 categorical hits on the solved samples; budget.py's module
+    docstring has the measurement.
+    """
     est = estimate_budget(amounts, category, widths.get(category, 0.0), minimum_allowed)
     if est.exact:
         return est.value
