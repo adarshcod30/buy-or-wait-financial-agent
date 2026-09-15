@@ -6,9 +6,6 @@
 log.txt
 
 # Agent tooling
-.claude/
-.claude.json
-CLAUDE.local.md
 
 # Python
 __pycache__/
@@ -27,12 +24,7 @@ code.zip
 submission/
 
 # local agent config and private planning notes
-CLAUDE.md
-CLAUDE.local.md
 docs/RESEARCH_AND_EXECUTION_PLAN.md
-
-# local agent and editor files, never committed
-AGENTS.md
 
 # secrets, build output and local noise
 *.log
