@@ -1,0 +1,14 @@
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/contents#get-repository-content","status":"404"}
+
+# A Mac checkout and a Linux CI runner should agree on line endings.
+* text=auto eol=lf
+
+# Binary assets: never diffed, never line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
