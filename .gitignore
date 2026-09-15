@@ -30,3 +30,6 @@ submission/
 CLAUDE.md
 CLAUDE.local.md
 docs/RESEARCH_AND_EXECUTION_PLAN.md
+
+# local agent and editor files, never committed
+AGENTS.md
