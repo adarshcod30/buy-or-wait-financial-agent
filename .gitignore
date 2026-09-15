@@ -33,3 +33,7 @@ docs/RESEARCH_AND_EXECUTION_PLAN.md
 
 # local agent and editor files, never committed
 AGENTS.md
+
+# secrets, build output and local noise
+*.log
+.ipynb_checkpoints/
