@@ -29,3 +29,10 @@ docs/RESEARCH_AND_EXECUTION_PLAN.md
 # secrets, build output and local noise
 *.log
 .ipynb_checkpoints/
+
+# test and type-checker artefacts
+.coverage
+htmlcov/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
